@@ -1310,7 +1310,6 @@ set(ZLIB_SRCS
     inftrees.c
     insert_string.c
     trees.c
-    uncompr.c
     zutil.c
 )
 
