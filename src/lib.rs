@@ -13,6 +13,7 @@ pub mod crc32_braid_comb;
 mod crc32_braid_comb_p;
 mod crc32_braid_p;
 mod crc32_braid_tbl;
+mod crc32_chorba_p;
 mod crc32_p;
 mod deflate;
 mod functable;
