@@ -7,6 +7,10 @@
 mod adler32_p;
 mod arch;
 pub mod compress;
+mod crc32_braid_comb_p;
+mod crc32_braid_p;
+mod crc32_braid_tbl;
+mod crc32_p;
 mod deflate;
 mod inflate;
 pub mod uncompr;
