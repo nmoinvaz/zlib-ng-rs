@@ -9,7 +9,6 @@
 #[cfg(feature = "runtime-cpu-detection")]
 use core::ffi::c_int;
 
-#[cfg(feature = "runtime-cpu-detection")]
 use crate::deflate::deflate_state;
 #[cfg(feature = "runtime-cpu-detection")]
 use crate::zlib::z_stream;
@@ -53,6 +52,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     fn functable_adler32(adler: u32, buf: *const u8, len: usize) -> u32;
     fn functable_crc32(crc: u32, buf: *const u8, len: usize) -> u32;
+    fn functable_longest_match(s: *mut deflate_state, cur_match: u32) -> u32;
 }
 
 /// Calls one entry of the function table, FUNCTABLE_CALL in C.
@@ -83,4 +83,10 @@ functable_call!(
     ///
     /// `buf` must be valid for reads of `len` bytes.
     crc32, functable_crc32, (crc: u32, buf: *const u8, len: usize) -> u32
+);
+functable_call!(
+    /// # Safety
+    ///
+    /// `s` must point to a deflate_state that upholds the IN assertions of longest_match.
+    longest_match, functable_longest_match, (s: *mut deflate_state, cur_match: u32) -> u32
 );

@@ -1293,7 +1293,6 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     deflate.c
-    deflate_fast.c
     deflate_medium.c
     deflate_quick.c
     deflate_slow.c

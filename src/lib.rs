@@ -17,6 +17,7 @@ mod crc32_braid_tbl;
 mod crc32_chorba_p;
 mod crc32_p;
 mod deflate;
+pub mod deflate_fast;
 pub mod deflate_huff;
 mod deflate_p;
 pub mod deflate_rle;

@@ -609,4 +609,8 @@ Z_INTERNAL uint32_t functable_adler32(uint32_t adler, const uint8_t *buf, size_t
 Z_INTERNAL uint32_t functable_crc32(uint32_t crc, const uint8_t *buf, size_t len) {
     return FUNCTABLE_CALL(crc32)(crc, buf, len);
 }
+
+Z_INTERNAL uint32_t functable_longest_match(deflate_state *const s, uint32_t cur_match) {
+    return FUNCTABLE_CALL(longest_match)(s, cur_match);
+}
 #endif
