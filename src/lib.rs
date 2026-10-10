@@ -18,6 +18,8 @@ mod crc32_p;
 mod deflate;
 mod functable;
 mod inflate;
+pub mod insert_string;
+mod insert_string_p;
 pub mod uncompr;
 pub mod zbuild;
 pub mod zconf;

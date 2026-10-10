@@ -49,6 +49,8 @@ pub(crate) unsafe fn deflateInit(strm: *mut z_stream, level: i32) -> i32 {
 
 /// number of elements in hash table
 pub(crate) const HASH_SIZE: usize = 65536;
+/// log2(HASH_SIZE)
+pub(crate) const HASH_BITS: u32 = 16;
 
 /// A Pos is an index in the character window.
 #[allow(non_camel_case_types)]
@@ -126,4 +128,18 @@ pub struct deflate_state {
 
     /// Heads of the hash chains or 0.
     pub(crate) head: *mut Pos,
+
+    /// hash index of string to be inserted
+    pub(crate) ins_h: u32,
+}
+
+/// Window mask: w_size is always a power of 2, so w_mask = w_size - 1
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state.
+#[inline(always)]
+pub(crate) unsafe fn w_mask(s: *const deflate_state) -> c_uint {
+    // SAFETY: the caller guarantees s is valid.
+    unsafe { (*s).w_size - 1 }
 }

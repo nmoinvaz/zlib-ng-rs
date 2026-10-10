@@ -1304,7 +1304,6 @@ set(ZLIB_SRCS
     infback.c
     inflate.c
     inftrees.c
-    insert_string.c
     trees.c
     zutil.c
 )
@@ -1603,10 +1602,11 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 
 # The C sources still own the state structures. A probe compiled with the flags of the library
 # records their layout, and the Rust sources assert that their view of each structure matches it.
-set(RUST_LAYOUT_C_CHECKS HASH_SIZE)
-set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE)
+set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH)
+set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH)
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
-        reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head)
+        reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
+        ins_h)
     list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(deflate_state, ${FIELD})")
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()

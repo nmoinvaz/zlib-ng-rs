@@ -14,6 +14,9 @@ pub(crate) const ADLER32_INITIAL_VALUE: u32 = 1;
 /// initial crc-32 hash value
 pub(crate) const CRC32_INITIAL_VALUE: u32 = 0;
 
+/// The minimum match length mandated by the deflate standard
+pub(crate) const STD_MIN_MATCH: usize = 3;
+
 /// zlib format overhead
 pub(crate) const ZLIB_WRAPLEN: usize = 6;
 

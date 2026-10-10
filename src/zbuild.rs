@@ -10,6 +10,20 @@ pub(crate) fn align_down(value: usize, align: usize) -> usize {
     value & !(align - 1)
 }
 
+#[cold]
+#[inline]
+fn cold() {}
+
+/// Marks a condition as usually true, like LIKELY in zbuild.h. The branch hints in core::hint
+/// are not stable yet, so the unexpected side calls a cold function instead.
+#[inline(always)]
+pub(crate) fn likely(condition: bool) -> bool {
+    if !condition {
+        cold();
+    }
+    condition
+}
+
 /// Name of a symbol in the zlib compatible API or the zlib-ng native API
 #[cfg(feature = "zlib-compat")]
 macro_rules! prefix {
