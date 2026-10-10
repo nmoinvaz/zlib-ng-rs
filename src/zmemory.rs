@@ -37,3 +37,12 @@ pub(crate) unsafe fn zng_memread_8(ptr: *const u8) -> u64 {
     // SAFETY: the caller guarantees ptr is valid for reads of 8 bytes.
     unsafe { ptr.cast::<u64>().read_unaligned() }
 }
+
+/// # Safety
+///
+/// `ptr` must be valid for writes of 8 bytes.
+#[inline(always)]
+pub(crate) unsafe fn zng_memwrite_8(ptr: *mut u8, val: u64) {
+    // SAFETY: the caller guarantees ptr is valid for writes of 8 bytes.
+    unsafe { ptr.cast::<u64>().write_unaligned(val) }
+}

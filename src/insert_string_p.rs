@@ -59,6 +59,28 @@ pub(crate) unsafe fn insert_knuth_val(s: *mut deflate_state, str: u32, val: u32)
 }
 
 /* ===========================================================================
+ * Insert string str using a pre-read value, returning the previous head of the
+ * hash chain. The prev link is left untouched since deflate_quick only inspects
+ * the chain head and never walks the chain.
+ */
+/// # Safety
+///
+/// `s` must point to a deflate_state with a valid head table.
+#[inline(always)]
+pub(crate) unsafe fn insert_knuth_val_head(s: *mut deflate_state, str: u32, val: u32) -> u32 {
+    // SAFETY: the caller guarantees the state and its head table are valid. The hash is below
+    // HASH_SIZE.
+    unsafe {
+        let h = update_hash_knuth(val);
+
+        let slot = (*s).head.add(h as usize);
+        let head = u32::from(*slot);
+        *slot = str as Pos;
+        head
+    }
+}
+
+/* ===========================================================================
  * Insert string str in the dictionary and set match_head to the previous head
  * of the hash chain (the most recent string with same hash key). Return
  * the previous length of the hash chain.

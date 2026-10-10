@@ -610,6 +610,10 @@ Z_INTERNAL uint32_t functable_adler32_copy(uint32_t adler, uint8_t *dst, const u
     return FUNCTABLE_CALL(adler32_copy)(adler, dst, src, len);
 }
 
+Z_INTERNAL uint32_t functable_compare256(const uint8_t *src0, const uint8_t *src1) {
+    return FUNCTABLE_CALL(compare256)(src0, src1);
+}
+
 Z_INTERNAL uint32_t functable_crc32(uint32_t crc, const uint8_t *buf, size_t len) {
     return FUNCTABLE_CALL(crc32)(crc, buf, len);
 }

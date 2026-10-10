@@ -1292,7 +1292,6 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     deflate.c
-    deflate_quick.c
     functable.c
     infback.c
     inflate.c

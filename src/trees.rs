@@ -2,7 +2,7 @@
 
 use core::ffi::c_int;
 
-use crate::deflate::deflate_state;
+use crate::deflate::{D_CODES, L_CODES, LENGTH_CODES, ct_data, deflate_state};
 use crate::zutil::{STD_MAX_MATCH, STD_MIN_MATCH};
 
 /// see definition of array dist_code in trees.c
@@ -21,6 +21,17 @@ unsafe extern "C" {
         stored_len: u32,
         last: c_int,
     );
+
+    /// The static literal tree. Since the bit lengths are imposed, there is no need for the
+    /// L_CODES extra codes used during heap construction. However the codes 286 and 287 are
+    /// needed to build a canonical tree.
+    pub(crate) safe static static_ltree: [ct_data; L_CODES + 2];
+    /// The static distance tree. (Actually a trivial tree since all codes use 5 bits.)
+    pub(crate) safe static static_dtree: [ct_data; D_CODES];
+
+    /// Combined mask + extra_bits tables for single-lookup optimization
+    pub(crate) safe static lmask_extra: [u16; LENGTH_CODES];
+    pub(crate) safe static dmask_extra: [u32; D_CODES];
 
     /// Distance codes. The first 256 values correspond to the distances 3 .. 258, the last 256
     /// values correspond to the top 8 bits of the 15 bit distances.

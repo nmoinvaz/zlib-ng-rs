@@ -8,7 +8,7 @@ use crate::zbuild::prefix;
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
 use crate::zlib::z_stream;
-use crate::zmemory::zng_memwrite_2;
+use crate::zmemory::{zng_memwrite_2, zng_memwrite_4, zng_memwrite_8};
 use crate::zutil::{MAX_BITS, STD_MAX_MATCH, STD_MIN_MATCH};
 
 unsafe extern "C" {
@@ -52,6 +52,12 @@ pub(crate) unsafe fn deflateInit(strm: *mut z_stream, level: i32) -> i32 {
         )
     }
 }
+
+/// size of bit buffer in bi_buf
+pub(crate) const BIT_BUF_SIZE: u32 = 64;
+
+/// end of block literal code
+pub(crate) const END_BLOCK: usize = 256;
 
 /// Whether distances and literals/lengths are kept in separate buffers, LIT_MEM in the C sources
 #[cfg_attr(not(feature = "c-layout"), allow(dead_code))]
@@ -394,6 +400,42 @@ pub(crate) unsafe fn sent_bits_add(s: *mut deflate_state, bits: u32) {
     }
 }
 
+/// Rounds bits_sent up to a byte boundary. The count only exists with ZLIB_DEBUG.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn sent_bits_align(s: *mut deflate_state) {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the count
+        // at this offset when it is built with ZLIB_DEBUG.
+        unsafe {
+            let count = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_BITS_SENT)
+                .cast::<c_ulong>();
+            count.write(count.read().wrapping_add(7) & !7);
+        }
+    }
+}
+
+/* ===========================================================================
+ * Output a byte on the stream.
+ * IN assertion: there is enough room in pending_buf.
+ */
+/// # Safety
+///
+/// `s` must point to a deflate_state whose pending buffer has room for 1 more byte.
+#[inline(always)]
+pub(crate) unsafe fn put_byte(s: *mut deflate_state, c: u8) {
+    // SAFETY: the caller guarantees the pending buffer has room.
+    unsafe {
+        *(*s).pending_buf.add((*s).pending as usize) = c;
+        (*s).pending += 1;
+    }
+}
+
 /* ===========================================================================
  * Output a short LSB first on the stream.
  * IN assertion: there is enough room in pending_buf.
@@ -407,6 +449,38 @@ pub(crate) unsafe fn put_short(s: *mut deflate_state, w: u16) {
     unsafe {
         zng_memwrite_2((*s).pending_buf.add((*s).pending as usize), w.to_le());
         (*s).pending += 2;
+    }
+}
+
+/* ===========================================================================
+ * Output a 32-bit unsigned int LSB first on the stream.
+ * IN assertion: there is enough room in pending_buf.
+ */
+/// # Safety
+///
+/// `s` must point to a deflate_state whose pending buffer has room for 4 more bytes.
+#[inline(always)]
+pub(crate) unsafe fn put_uint32(s: *mut deflate_state, dw: u32) {
+    // SAFETY: the caller guarantees the pending buffer has room.
+    unsafe {
+        zng_memwrite_4((*s).pending_buf.add((*s).pending as usize), dw.to_le());
+        (*s).pending += 4;
+    }
+}
+
+/* ===========================================================================
+ * Output a 64-bit unsigned int LSB first on the stream.
+ * IN assertion: there is enough room in pending_buf.
+ */
+/// # Safety
+///
+/// `s` must point to a deflate_state whose pending buffer has room for 8 more bytes.
+#[inline(always)]
+pub(crate) unsafe fn put_uint64(s: *mut deflate_state, lld: u64) {
+    // SAFETY: the caller guarantees the pending buffer has room.
+    unsafe {
+        zng_memwrite_8((*s).pending_buf.add((*s).pending as usize), lld.to_le());
+        (*s).pending += 8;
     }
 }
 
