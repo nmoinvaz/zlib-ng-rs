@@ -110,3 +110,9 @@ pub const Z_VERSION_ERROR: i32 = -6;
 /* Return codes for the compression/decompression functions. Negative values
  * are errors, positive values are used for special but normal events.
  */
+
+pub const Z_NO_COMPRESSION: i32 = 0;
+pub const Z_BEST_SPEED: i32 = 1;
+pub const Z_BEST_COMPRESSION: i32 = 9;
+pub const Z_DEFAULT_COMPRESSION: i32 = -1;
+/* compression levels */

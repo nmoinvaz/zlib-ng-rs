@@ -17,6 +17,10 @@ doctest = false
 [features]
 # Export the zlib compatible API instead of the zlib-ng native API.
 zlib-compat = []
+# Build without the deflate_quick strategy.
+no-quick-strategy = []
+# Deflate with DFLTCC on IBM Z.
+s390-dfltcc-deflate = []
 
 # Unwinding into C callers is undefined behavior.
 [profile.dev]

@@ -6,10 +6,13 @@
 
 mod adler32_p;
 mod arch;
+pub mod compress;
+mod deflate;
 mod inflate;
 pub mod uncompr;
 pub mod zbuild;
 pub mod zlib;
+mod zutil;
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {

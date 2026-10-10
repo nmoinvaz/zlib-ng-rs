@@ -1293,7 +1293,6 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     adler32.c
-    compress.c
     crc32.c
     crc32_braid_comb.c
     deflate.c
@@ -1362,8 +1361,19 @@ if(RUST_TARGET)
     list(APPEND RUST_ARGS --target ${RUST_TARGET})
     set(RUST_OUTPUT_DIR ${RUST_TARGET_DIR}/${RUST_TARGET})
 endif()
+set(RUST_FEATURES)
 if(ZLIB_COMPAT)
-    list(APPEND RUST_ARGS --features zlib-compat)
+    list(APPEND RUST_FEATURES zlib-compat)
+endif()
+if(NOT WITH_NEW_STRATEGIES)
+    list(APPEND RUST_FEATURES no-quick-strategy)
+endif()
+if(WITH_DFLTCC_DEFLATE)
+    list(APPEND RUST_FEATURES s390-dfltcc-deflate)
+endif()
+if(RUST_FEATURES)
+    string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
+    list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 endif()
 
 set(RUST_LIBRARY_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}zlib_ng${CMAKE_STATIC_LIBRARY_SUFFIX})
