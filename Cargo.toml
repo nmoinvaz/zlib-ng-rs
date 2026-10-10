@@ -25,6 +25,8 @@ s390-dfltcc-deflate = []
 z-off-t-32 = []
 # z_off64_t is 32 bits wide.
 z-off64-t-32 = []
+# Check the structures shared with the C sources against the layout that the build read from them.
+c-layout = []
 
 # Unwinding into C callers is undefined behavior.
 [profile.dev]

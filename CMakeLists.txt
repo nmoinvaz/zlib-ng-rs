@@ -1312,7 +1312,6 @@ set(ZLIB_SRCS
 set(ZLIB_GENERIC_SRCS
     arch/generic/chunkset_c.c
     arch/generic/compare256_c.c
-    arch/generic/slide_hash_c.c
 )
 
 if(WITH_ALL_FALLBACKS)
@@ -1598,17 +1597,60 @@ if(SIZEOF_Z_OFF64_T EQUAL 4)
 elseif(NOT SIZEOF_Z_OFF64_T EQUAL 8)
     message(FATAL_ERROR "The Rust sources need z_off64_t to be 4 or 8 bytes.")
 endif()
-if(RUST_FEATURES)
-    string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
-    list(APPEND RUST_ARGS --features ${RUST_FEATURES})
-endif()
+list(APPEND RUST_FEATURES c-layout)
+string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
+list(APPEND RUST_ARGS --features ${RUST_FEATURES})
+
+# The C sources still own the state structures. A probe compiled with the flags of the library
+# records their layout, and the Rust sources assert that their view of each structure matches it.
+set(RUST_LAYOUT_C_CHECKS HASH_SIZE)
+set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE)
+foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
+        reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head)
+    list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(deflate_state, ${FIELD})")
+    list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
+endforeach()
+
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include <stddef.h>\n\n")
+string(APPEND RUST_LAYOUT_PROBE
+    "#define DIGIT(n, d) ((char)('0' + ((n) / (d)) % 10))\n"
+    "#define LAYOUT(index, value) \\\n"
+    "    const char zng_layout_##index[] = {'Z', 'N', 'G', 'L', 'A', 'Y', 'O', 'U', 'T', ':', \\\n"
+    "        DIGIT(index, 100), DIGIT(index, 10), DIGIT(index, 1), '=', \\\n"
+    "        DIGIT(value, 10000000), DIGIT(value, 1000000), DIGIT(value, 100000), DIGIT(value, 10000), \\\n"
+    "        DIGIT(value, 1000), DIGIT(value, 100), DIGIT(value, 10), DIGIT(value, 1), ';', '\\0'};\n\n")
+set(RUST_LAYOUT_INDEX 0)
+set(RUST_LAYOUT_CHECKS "")
+foreach(C_CHECK ${RUST_LAYOUT_C_CHECKS})
+    list(GET RUST_LAYOUT_RUST_CHECKS ${RUST_LAYOUT_INDEX} RUST_CHECK)
+    string(APPEND RUST_LAYOUT_PROBE "LAYOUT(${RUST_LAYOUT_INDEX}, ${C_CHECK})\n")
+    string(APPEND RUST_LAYOUT_CHECKS "${RUST_CHECK}\n")
+    math(EXPR RUST_LAYOUT_INDEX "${RUST_LAYOUT_INDEX} + 1")
+endforeach()
+set(RUST_LAYOUT_PROBE_FILE ${CMAKE_CURRENT_BINARY_DIR}/rust_layout_probe.c)
+set(RUST_LAYOUT_CHECKS_FILE ${CMAKE_CURRENT_BINARY_DIR}/rust_layout_checks.txt)
+set(RUST_LAYOUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/rust_layout.rs)
+file(GENERATE OUTPUT ${RUST_LAYOUT_PROBE_FILE} CONTENT "${RUST_LAYOUT_PROBE}")
+file(GENERATE OUTPUT ${RUST_LAYOUT_CHECKS_FILE} CONTENT "${RUST_LAYOUT_CHECKS}")
+
+add_library(zlib-ng-layout OBJECT ${RUST_LAYOUT_PROBE_FILE})
+target_include_directories(zlib-ng-layout PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+add_custom_command(OUTPUT ${RUST_LAYOUT_FILE}
+    COMMAND ${CMAKE_COMMAND} -DPROBE=$<TARGET_OBJECTS:zlib-ng-layout> -DCHECKS=${RUST_LAYOUT_CHECKS_FILE}
+        -DOUTPUT=${RUST_LAYOUT_FILE} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rust-layout.cmake
+    DEPENDS $<TARGET_OBJECTS:zlib-ng-layout> ${RUST_LAYOUT_CHECKS_FILE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rust-layout.cmake
+    COMMENT "Reading the C structure layout for the Rust sources"
+    VERBATIM)
 
 # Cargo tracks its own dependencies, so it runs on every build and only rebuilds when needed.
 add_custom_target(zlib-ng-cargo
-    COMMAND ${CARGO_EXECUTABLE} rustc ${RUST_ARGS} --profile $<IF:$<CONFIG:Debug>,dev,release>
+    COMMAND ${CMAKE_COMMAND} -E env ZNG_C_LAYOUT=${RUST_LAYOUT_FILE}
+        ${CARGO_EXECUTABLE} rustc ${RUST_ARGS} --profile $<IF:$<CONFIG:Debug>,dev,release>
         -- --emit=obj=${RUST_OBJECT}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${RUST_OUTPUT_DIR}/$<IF:$<CONFIG:Debug>,debug,release>/${RUST_LIBRARY_NAME} ${RUST_LIBRARY}
+    DEPENDS ${RUST_LAYOUT_FILE}
     BYPRODUCTS ${RUST_OBJECT} ${RUST_LIBRARY}
     COMMENT "Building Rust sources"
     VERBATIM)

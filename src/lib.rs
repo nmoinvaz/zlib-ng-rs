@@ -24,6 +24,11 @@ pub mod zconf;
 pub mod zlib;
 mod zutil;
 
+#[cfg(feature = "c-layout")]
+mod c_layout {
+    include!(env!("ZNG_C_LAYOUT"));
+}
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe extern "C" {
