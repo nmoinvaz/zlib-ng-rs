@@ -40,7 +40,7 @@ configure_util_executable(makefixed)
 set(MAKEFIXED_COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:makefixed> PARENT_SCOPE)
 
 # maketrees
-add_executable(maketrees maketrees.c ${PROJECT_SOURCE_DIR}/trees.c ${PROJECT_SOURCE_DIR}/zutil.c)
+add_executable(maketrees maketrees.c ${PROJECT_SOURCE_DIR}/zutil.c)
 configure_util_executable(maketrees)
 set(MAKETREES_COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:maketrees> PARENT_SCOPE)
 
