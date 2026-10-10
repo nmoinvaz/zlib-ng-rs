@@ -2,4 +2,5 @@
 
 unsafe extern "C" {
     pub(crate) fn functable_adler32(adler: u32, buf: *const u8, len: usize) -> u32;
+    pub(crate) fn functable_crc32(crc: u32, buf: *const u8, len: usize) -> u32;
 }

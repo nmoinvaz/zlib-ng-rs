@@ -603,3 +603,7 @@ Z_INTERNAL struct functable_s functable = {
 Z_INTERNAL uint32_t functable_adler32(uint32_t adler, const uint8_t *buf, size_t len) {
     return FUNCTABLE_CALL(adler32)(adler, buf, len);
 }
+
+Z_INTERNAL uint32_t functable_crc32(uint32_t crc, const uint8_t *buf, size_t len) {
+    return FUNCTABLE_CALL(crc32)(crc, buf, len);
+}

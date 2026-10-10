@@ -1292,7 +1292,6 @@ set(ZLIB_PRIVATE_HDRS
     zutil_p.h
 )
 set(ZLIB_SRCS
-    crc32.c
     crc32_braid_comb.c
     deflate.c
     deflate_fast.c
