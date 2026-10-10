@@ -16,14 +16,17 @@ mod crc32_braid_tbl;
 mod crc32_chorba_p;
 mod crc32_p;
 mod deflate;
+mod fallback_builtins;
 mod functable;
 mod inflate;
 pub mod insert_string;
 mod insert_string_p;
+mod match_tpl;
 pub mod uncompr;
 pub mod zbuild;
 pub mod zconf;
 pub mod zlib;
+mod zmemory;
 mod zutil;
 
 #[cfg(feature = "c-layout")]

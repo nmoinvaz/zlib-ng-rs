@@ -1310,7 +1310,6 @@ set(ZLIB_SRCS
 
 set(ZLIB_GENERIC_SRCS
     arch/generic/chunkset_c.c
-    arch/generic/compare256_c.c
 )
 
 if(WITH_ALL_FALLBACKS)
@@ -1602,11 +1601,15 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 
 # The C sources still own the state structures. A probe compiled with the flags of the library
 # records their layout, and the Rust sources assert that their view of each structure matches it.
-set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH)
-set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH)
+# An entry that starts with const becomes a Rust constant with the value from C instead.
+set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP)
+set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
+    crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
+    "const OPTIMAL_CMP: u32")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
-        ins_h)
+        ins_h match_length match_available prev_match match_start prev_length max_chain_length max_lazy_match
+        level strategy good_match nice_match)
     list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(deflate_state, ${FIELD})")
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()

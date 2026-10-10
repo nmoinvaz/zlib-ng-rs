@@ -2,7 +2,7 @@
 # Licensed under the Zlib license, see LICENSE.md for details
 #
 # PROBE is the object file, CHECKS lists one Rust expression per record, and OUTPUT is the Rust
-# source to write.
+# source to write. A check that starts with const declares a constant with the value of the record.
 
 file(STRINGS "${PROBE}" records REGEX "ZNGLAYOUT:[0-9]+=[0-9]+;")
 foreach(record IN LISTS records)
@@ -22,7 +22,11 @@ foreach(check IN LISTS checks)
     if(NOT DEFINED value_${index})
         message(FATAL_ERROR "No layout record for ${check} in ${PROBE}")
     endif()
-    string(APPEND content "const _: () = assert!(${check} == ${value_${index}});\n")
+    if(check MATCHES "^const ")
+        string(APPEND content "pub(crate) ${check} = ${value_${index}};\n")
+    else()
+        string(APPEND content "const _: () = assert!(${check} == ${value_${index}});\n")
+    endif()
     math(EXPR index "${index} + 1")
 endforeach()
 file(WRITE "${OUTPUT}" "${content}")

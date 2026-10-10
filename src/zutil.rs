@@ -16,6 +16,11 @@ pub(crate) const CRC32_INITIAL_VALUE: u32 = 0;
 
 /// The minimum match length mandated by the deflate standard
 pub(crate) const STD_MIN_MATCH: usize = 3;
+/// The maximum match length mandated by the deflate standard
+pub(crate) const STD_MAX_MATCH: usize = 258;
+
+/// The minimum wanted match length, affects deflate_quick, deflate_fast, deflate_medium and deflate_slow
+pub(crate) const WANT_MIN_MATCH: usize = 4;
 
 /// zlib format overhead
 pub(crate) const ZLIB_WRAPLEN: usize = 6;

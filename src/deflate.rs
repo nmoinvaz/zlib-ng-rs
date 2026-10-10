@@ -8,6 +8,7 @@ use crate::zbuild::prefix;
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
 use crate::zlib::z_stream;
+use crate::zutil::{STD_MAX_MATCH, STD_MIN_MATCH};
 
 unsafe extern "C" {
     #[cfg(not(feature = "zlib-compat"))]
@@ -131,6 +132,55 @@ pub struct deflate_state {
 
     /// hash index of string to be inserted
     pub(crate) ins_h: u32,
+
+    /// length of best match
+    pub(crate) match_length: c_uint,
+    /// set if previous match exists
+    pub(crate) match_available: c_int,
+    /// previous match (used by deflate_slow)
+    pub(crate) prev_match: u32,
+
+    /* Cacheline 2 */
+    /// start of matching string
+    pub(crate) match_start: c_uint,
+
+    /// Length of the best match at previous step. Matches not greater than this
+    /// are discarded. This is used in the lazy match evaluation.
+    pub(crate) prev_length: c_uint,
+
+    /// To speed up deflation, hash chains are never searched beyond this length.
+    /// A higher limit improves compression ratio but degrades the speed.
+    pub(crate) max_chain_length: c_uint,
+
+    /// Attempt to find a better match only when the current match is strictly smaller
+    /// than this value. This mechanism is used only for compression levels >= 4.
+    pub(crate) max_lazy_match: c_uint,
+
+    /// compression level (1..9)
+    pub(crate) level: c_int,
+    /// favor or force Huffman coding
+    pub(crate) strategy: c_int,
+
+    /// Use a faster search when the previous match is longer than this
+    pub(crate) good_match: c_uint,
+    /// Stop searching when current match exceeds this
+    pub(crate) nice_match: c_int,
+}
+
+/// Minimum amount of lookahead, except at the end of the input file.
+/// See deflate.c for comments about the STD_MIN_MATCH+1.
+pub(crate) const MIN_LOOKAHEAD: u32 = (STD_MAX_MATCH + STD_MIN_MATCH + 1) as u32;
+
+/// In order to simplify the code, particularly on 16 bit machines, match
+/// distances are limited to MAX_DIST instead of WSIZE.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state.
+#[inline(always)]
+pub(crate) unsafe fn max_dist(s: *const deflate_state) -> c_uint {
+    // SAFETY: the caller guarantees s is valid.
+    unsafe { (*s).w_size - MIN_LOOKAHEAD }
 }
 
 /// Window mask: w_size is always a power of 2, so w_mask = w_size - 1

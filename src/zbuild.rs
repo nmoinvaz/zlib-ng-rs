@@ -10,6 +10,25 @@ pub(crate) fn align_down(value: usize, align: usize) -> usize {
     value & !(align - 1)
 }
 
+/* OPTIMAL_CMP values determine the comparison width:
+ * 64: Best for 64-bit architectures with unaligned access
+ * 32: Best for 32-bit architectures with unaligned access
+ * 16: Safe default for unknown architectures
+ * 8:  Safe fallback for architectures without unaligned access
+ */
+/// The build takes the value that the C sources compute.
+#[cfg(feature = "c-layout")]
+pub(crate) use crate::c_layout::OPTIMAL_CMP;
+/// The value for a plain cargo build, which has no C sources to ask.
+#[cfg(not(feature = "c-layout"))]
+pub(crate) const OPTIMAL_CMP: u32 = if cfg!(target_pointer_width = "64") {
+    64
+} else if cfg!(target_pointer_width = "32") {
+    32
+} else {
+    16
+};
+
 #[cold]
 #[inline]
 fn cold() {}

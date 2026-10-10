@@ -10,7 +10,7 @@ use crate::zutil::STD_MIN_MATCH;
 const KNUTH_SHIFT: u32 = 32 - HASH_BITS;
 
 #[inline(always)]
-fn update_hash_knuth(val: u32) -> u32 {
+pub(crate) fn update_hash_knuth(val: u32) -> u32 {
     val.wrapping_mul(2654435761) >> KNUTH_SHIFT
 }
 
@@ -23,7 +23,7 @@ const ROLL_MASK: u32 = (HASH_SIZE as u32 / 2) - 1;
  *    previous key instead of complete recalculation each time.
  */
 #[inline(always)]
-fn update_hash_roll(h: u32, val: u8) -> u32 {
+pub(crate) fn update_hash_roll(h: u32, val: u8) -> u32 {
     ((h << 5) ^ u32::from(val)) & ROLL_MASK
 }
 
