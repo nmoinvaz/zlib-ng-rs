@@ -4,6 +4,10 @@
 
 #![no_std]
 
+mod adler32_p;
+mod arch;
+mod zbuild;
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe extern "C" {
