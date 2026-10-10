@@ -7,10 +7,15 @@
 use core::ffi::c_int;
 use core::ptr;
 
+#[cfg(feature = "s390-dfltcc-deflate")]
+use crate::arch::s390::dfltcc_deflate::deflate_need_checksum;
 use crate::deflate::{D_CODES, LITERALS, deflate_state, flush_pending, max_dist};
+use crate::functable;
 use crate::trees::{d_code, zng_length_code, zng_tr_flush_block};
 #[cfg(not(feature = "lit-mem"))]
 use crate::zbuild::OPTIMAL_CMP;
+use crate::zbuild::{z_checksum_t, z_uintmax_t};
+use crate::zlib::z_stream;
 #[cfg(not(feature = "lit-mem"))]
 use crate::zmemory::zng_memwrite_4;
 
@@ -143,6 +148,62 @@ pub(crate) unsafe fn check_match(
 ) {
 }
 
+/// Whether deflate computes the check value itself, which hardware deflate on s390 takes over.
+#[cfg(not(feature = "s390-dfltcc-deflate"))]
+#[inline(always)]
+unsafe fn deflate_need_checksum(_strm: *mut z_stream) -> bool {
+    true
+}
+
+/* ===========================================================================
+ * Read a new buffer from the current input stream, update the adler32 and total number of
+ * bytes read.  All deflate() input goes through this function so some applications may wish
+ * to modify it to avoid allocating a large strm->next_in buffer and copying from it.
+ * See also flush_pending_inline().
+ */
+/// # Safety
+///
+/// `strm` must be a valid deflate stream and `buf` must be valid for writes of `size` bytes.
+#[allow(clippy::unnecessary_cast, clippy::useless_conversion)]
+#[inline(always)]
+pub(crate) unsafe fn read_buf(strm: *mut z_stream, buf: *mut u8, size: u32) -> u32 {
+    // SAFETY: the caller guarantees the stream and the buffer are valid. next_in holds avail_in
+    // bytes, and len is no more than that.
+    unsafe {
+        let s = (*strm).state.cast::<deflate_state>();
+        let len = (*strm).avail_in.min(size);
+
+        if len == 0 {
+            return 0;
+        }
+
+        if !deflate_need_checksum(strm) {
+            ptr::copy_nonoverlapping((*strm).next_in, buf, len as usize);
+        } else if (*s).wrap == 2 {
+            (*strm).adler = z_checksum_t::from(functable::crc32_copy(
+                (*strm).adler as u32,
+                buf,
+                (*strm).next_in,
+                len as usize,
+            ));
+        } else if (*s).wrap == 1 {
+            (*strm).adler = z_checksum_t::from(functable::adler32_copy(
+                (*strm).adler as u32,
+                buf,
+                (*strm).next_in,
+                len as usize,
+            ));
+        } else {
+            ptr::copy_nonoverlapping((*strm).next_in, buf, len as usize);
+        }
+
+        (*strm).avail_in -= len;
+        (*strm).next_in = (*strm).next_in.add(len as usize);
+        (*strm).total_in = (*strm).total_in.wrapping_add(len as z_uintmax_t);
+        len
+    }
+}
+
 /* ===========================================================================
  * Flush the current block, with given end-of-file flag.
  * IN assertion: strstart is set to the end of the current match.
@@ -184,3 +245,6 @@ macro_rules! flush_block {
     };
 }
 pub(crate) use flush_block;
+
+/// Maximum stored block length in deflate format (not including header).
+pub(crate) const MAX_STORED: u32 = 65535;

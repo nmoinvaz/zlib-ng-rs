@@ -1293,7 +1293,6 @@ set(ZLIB_PRIVATE_HDRS
 set(ZLIB_SRCS
     deflate.c
     deflate_quick.c
-    deflate_stored.c
     functable.c
     infback.c
     inflate.c
@@ -1625,6 +1624,7 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP
     RUST_LAYOUT_LIT_MEM RUST_LAYOUT_RUNTIME LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS DIST_CODE_LEN
     MIN_ROLL_LEVEL "offsetof(deflate_state, longest_match)" "offsetof(deflate_state, insert_batch)"
+    RUST_LAYOUT_ZLIB_DEBUG RUST_LAYOUT_COMPRESSED_LEN RUST_LAYOUT_BITS_SENT
     "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
@@ -1634,6 +1634,7 @@ set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS 
     crate::deflate::BL_CODES crate::deflate::HEAP_SIZE crate::zutil::MAX_BITS crate::trees::DIST_CODE_LEN
     crate::deflate::MIN_ROLL_LEVEL "const DEFLATE_STATE_LONGEST_MATCH: usize"
     "const DEFLATE_STATE_INSERT_BATCH: usize"
+    "const ZLIB_DEBUG: usize" "const DEFLATE_STATE_COMPRESSED_LEN: usize" "const DEFLATE_STATE_BITS_SENT: usize"
     "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
@@ -1661,6 +1662,11 @@ set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \
 string(APPEND RUST_LAYOUT_PROBE
     "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
     "#ifdef DISABLE_RUNTIME_CPU_DETECTION\n#  define RUST_LAYOUT_RUNTIME 0\n#else\n#  define RUST_LAYOUT_RUNTIME 1\n#endif\n\n"
+    "#ifdef ZLIB_DEBUG\n#  define RUST_LAYOUT_ZLIB_DEBUG 1\n"
+    "#  define RUST_LAYOUT_COMPRESSED_LEN offsetof(deflate_state, compressed_len)\n"
+    "#  define RUST_LAYOUT_BITS_SENT offsetof(deflate_state, bits_sent)\n"
+    "#else\n#  define RUST_LAYOUT_ZLIB_DEBUG 0\n#  define RUST_LAYOUT_COMPRESSED_LEN 0\n"
+    "#  define RUST_LAYOUT_BITS_SENT 0\n#endif\n\n"
     "#define DIGIT(n, d) ((char)('0' + ((n) / (d)) % 10))\n"
     "#define LAYOUT(index, value) \\\n"
     "    const char zng_layout_##index[] = {'Z', 'N', 'G', 'L', 'A', 'Y', 'O', 'U', 'T', ':', \\\n"

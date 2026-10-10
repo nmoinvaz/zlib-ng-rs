@@ -51,7 +51,9 @@ unsafe extern "C" {
 #[cfg(not(feature = "runtime-cpu-detection"))]
 unsafe extern "C" {
     fn functable_adler32(adler: u32, buf: *const u8, len: usize) -> u32;
+    fn functable_adler32_copy(adler: u32, dst: *mut u8, src: *const u8, len: usize) -> u32;
     fn functable_crc32(crc: u32, buf: *const u8, len: usize) -> u32;
+    fn functable_crc32_copy(crc: u32, dst: *mut u8, src: *const u8, len: usize) -> u32;
     fn functable_longest_match(s: *mut deflate_state, cur_match: u32) -> u32;
 }
 
@@ -81,8 +83,20 @@ functable_call!(
 functable_call!(
     /// # Safety
     ///
+    /// `src` must be valid for reads and `dst` for writes of `len` bytes.
+    adler32_copy, functable_adler32_copy, (adler: u32, dst: *mut u8, src: *const u8, len: usize) -> u32
+);
+functable_call!(
+    /// # Safety
+    ///
     /// `buf` must be valid for reads of `len` bytes.
     crc32, functable_crc32, (crc: u32, buf: *const u8, len: usize) -> u32
+);
+functable_call!(
+    /// # Safety
+    ///
+    /// `src` must be valid for reads and `dst` for writes of `len` bytes.
+    crc32_copy, functable_crc32_copy, (crc: u32, dst: *mut u8, src: *const u8, len: usize) -> u32
 );
 functable_call!(
     /// # Safety

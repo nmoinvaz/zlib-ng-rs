@@ -2,12 +2,13 @@
 
 #[cfg(feature = "zlib-compat")]
 use core::ffi::c_char;
-use core::ffi::{c_int, c_uint, c_void};
+use core::ffi::{c_int, c_uint, c_ulong, c_void};
 
 use crate::zbuild::prefix;
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
 use crate::zlib::z_stream;
+use crate::zmemory::zng_memwrite_2;
 use crate::zutil::{MAX_BITS, STD_MAX_MATCH, STD_MIN_MATCH};
 
 unsafe extern "C" {
@@ -334,6 +335,78 @@ pub(crate) unsafe fn insert_batch_fn(s: *const deflate_state) -> insert_batch_fu
             .add(DEFLATE_STATE_INSERT_BATCH)
             .cast::<insert_batch_func>()
             .read()
+    }
+}
+
+/// Whether the C sources are built with ZLIB_DEBUG, which adds the bit counts below to the state
+#[cfg(feature = "c-layout")]
+pub(crate) const ZLIB_DEBUG: bool = crate::c_layout::ZLIB_DEBUG != 0;
+#[cfg(not(feature = "c-layout"))]
+pub(crate) const ZLIB_DEBUG: bool = cfg!(debug_assertions);
+
+#[cfg(feature = "c-layout")]
+use crate::c_layout::{DEFLATE_STATE_BITS_SENT, DEFLATE_STATE_COMPRESSED_LEN};
+/// The offsets for a plain cargo build, which has no C sources to ask.
+#[cfg(not(feature = "c-layout"))]
+const DEFLATE_STATE_COMPRESSED_LEN: usize = size_of::<deflate_state>() + size_of::<usize>();
+#[cfg(not(feature = "c-layout"))]
+const DEFLATE_STATE_BITS_SENT: usize = DEFLATE_STATE_COMPRESSED_LEN + size_of::<c_ulong>();
+
+/// Adds to compressed_len, the total bit length of the compressed file mod 2^32. The count only
+/// exists with ZLIB_DEBUG.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn cmpr_bits_add(s: *mut deflate_state, len: u32) {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the count
+        // at this offset when it is built with ZLIB_DEBUG.
+        unsafe {
+            let count = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_COMPRESSED_LEN)
+                .cast::<c_ulong>();
+            count.write(count.read().wrapping_add(c_ulong::from(len)));
+        }
+    }
+}
+
+/// Adds to bits_sent, the bit length of the compressed data sent mod 2^32. The count only exists
+/// with ZLIB_DEBUG.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn sent_bits_add(s: *mut deflate_state, bits: u32) {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the count
+        // at this offset when it is built with ZLIB_DEBUG.
+        unsafe {
+            let count = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_BITS_SENT)
+                .cast::<c_ulong>();
+            count.write(count.read().wrapping_add(c_ulong::from(bits)));
+        }
+    }
+}
+
+/* ===========================================================================
+ * Output a short LSB first on the stream.
+ * IN assertion: there is enough room in pending_buf.
+ */
+/// # Safety
+///
+/// `s` must point to a deflate_state whose pending buffer has room for 2 more bytes.
+#[inline(always)]
+pub(crate) unsafe fn put_short(s: *mut deflate_state, w: u16) {
+    // SAFETY: the caller guarantees the pending buffer has room.
+    unsafe {
+        zng_memwrite_2((*s).pending_buf.add((*s).pending as usize), w.to_le());
+        (*s).pending += 2;
     }
 }
 

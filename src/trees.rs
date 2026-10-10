@@ -15,6 +15,12 @@ unsafe extern "C" {
         stored_len: u32,
         last: c_int,
     );
+    pub(crate) fn zng_tr_stored_block(
+        s: *mut deflate_state,
+        buf: *mut u8,
+        stored_len: u32,
+        last: c_int,
+    );
 
     /// Distance codes. The first 256 values correspond to the distances 3 .. 258, the last 256
     /// values correspond to the top 8 bits of the 15 bit distances.
