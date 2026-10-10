@@ -79,6 +79,33 @@ pub(crate) unsafe fn insert_knuth(s: *mut deflate_state, window: *mut u8, str: u
     }
 }
 
+/// # Safety
+///
+/// `s` must point to a deflate_state with valid head and prev tables, and `window` must be valid
+/// for reads of `str + 3` bytes.
+#[inline(always)]
+pub(crate) unsafe fn insert_roll(s: *mut deflate_state, window: *mut u8, str: u32) -> u32 {
+    // SAFETY: the caller guarantees the state, its tables and the window byte are valid. The hash
+    // is below HASH_SIZE and the masked index is below w_size.
+    unsafe {
+        let strstart = window.add(str as usize + (STD_MIN_MATCH - 1));
+
+        let headp = (*s).head;
+        let prevp = (*s).prev;
+        let w_mask = w_mask(s);
+
+        let h = update_hash_roll((*s).ins_h, *strstart);
+        (*s).ins_h = h;
+
+        let head = u32::from(*headp.add(h as usize));
+        if likely(head != str) {
+            *prevp.add((str & w_mask) as usize) = head as Pos;
+            *headp.add(h as usize) = str as Pos;
+        }
+        head
+    }
+}
+
 /* ===========================================================================
  * Insert string str in the dictionary and set match_head to the previous head
  * of the hash chain (the most recent string with same hash key). Return

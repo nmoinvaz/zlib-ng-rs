@@ -71,6 +71,9 @@ pub(crate) const HEAP_SIZE: usize = 2 * L_CODES + 1;
 
 /// number of elements in hash table
 pub(crate) const HASH_SIZE: usize = 65536;
+
+/// The lowest level that uses the rolling hash
+pub(crate) const MIN_ROLL_LEVEL: i32 = 9;
 /// log2(HASH_SIZE)
 pub(crate) const HASH_BITS: u32 = 16;
 
@@ -281,6 +284,57 @@ pub struct deflate_state {
     pub(crate) dyn_dtree: [ct_data; 2 * D_CODES + 1],
     /// Huffman tree for bit lengths
     pub(crate) bl_tree: [ct_data; 2 * BL_CODES + 1],
+}
+
+#[allow(non_camel_case_types)]
+pub(crate) type longest_match_func =
+    unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32;
+#[allow(non_camel_case_types)]
+pub(crate) type insert_batch_func =
+    unsafe extern "C" fn(s: *mut deflate_state, window: *mut u8, str: u32, count: u32);
+
+// The level-selected function variants sit after the fields that only some builds have, so the
+// build reads their offsets from the C sources.
+#[cfg(feature = "c-layout")]
+use crate::c_layout::{DEFLATE_STATE_INSERT_BATCH, DEFLATE_STATE_LONGEST_MATCH};
+/// The offset for a plain cargo build, which has no C sources to ask.
+#[cfg(not(feature = "c-layout"))]
+const DEFLATE_STATE_LONGEST_MATCH: usize = size_of::<deflate_state>() + size_of::<usize>();
+#[cfg(not(feature = "c-layout"))]
+const DEFLATE_STATE_INSERT_BATCH: usize = DEFLATE_STATE_LONGEST_MATCH + size_of::<usize>();
+
+/// Level-selected longest_match variant, set by lm_set_level()
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn longest_match_fn(s: *const deflate_state) -> longest_match_func {
+    // SAFETY: the caller guarantees s points to the full C structure, which holds the function
+    // pointer at this offset.
+    unsafe {
+        s.cast::<u8>()
+            .add(DEFLATE_STATE_LONGEST_MATCH)
+            .cast::<longest_match_func>()
+            .read()
+    }
+}
+
+/// Level-selected insert_batch variant, set by lm_set_level()
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn insert_batch_fn(s: *const deflate_state) -> insert_batch_func {
+    // SAFETY: the caller guarantees s points to the full C structure, which holds the function
+    // pointer at this offset.
+    unsafe {
+        s.cast::<u8>()
+            .add(DEFLATE_STATE_INSERT_BATCH)
+            .cast::<insert_batch_func>()
+            .read()
+    }
 }
 
 /// Minimum amount of lookahead, except at the end of the input file.

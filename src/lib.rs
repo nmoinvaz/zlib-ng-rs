@@ -22,6 +22,7 @@ pub mod deflate_huff;
 pub mod deflate_medium;
 mod deflate_p;
 pub mod deflate_rle;
+pub mod deflate_slow;
 mod fallback_builtins;
 mod functable;
 mod inflate;
