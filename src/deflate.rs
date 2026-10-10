@@ -8,7 +8,7 @@ use crate::zbuild::prefix;
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
 use crate::zlib::z_stream;
-use crate::zutil::{STD_MAX_MATCH, STD_MIN_MATCH};
+use crate::zutil::{MAX_BITS, STD_MAX_MATCH, STD_MIN_MATCH};
 
 unsafe extern "C" {
     #[cfg(not(feature = "zlib-compat"))]
@@ -25,6 +25,10 @@ unsafe extern "C" {
     pub(crate) fn deflate(strm: *mut z_stream, flush: i32) -> i32;
     #[link_name = prefix!("deflateEnd")]
     pub(crate) fn deflateEnd(strm: *mut z_stream) -> i32;
+    #[link_name = prefix!("fill_window")]
+    pub(crate) fn fill_window(s: *mut deflate_state);
+    #[link_name = prefix!("flush_pending")]
+    pub(crate) fn flush_pending(strm: *mut z_stream);
 }
 
 /// deflateInit is a macro in zlib.h to allow checking the zlib version
@@ -48,6 +52,23 @@ pub(crate) unsafe fn deflateInit(strm: *mut z_stream, level: i32) -> i32 {
     }
 }
 
+/// Whether distances and literals/lengths are kept in separate buffers, LIT_MEM in the C sources
+#[cfg_attr(not(feature = "c-layout"), allow(dead_code))]
+pub(crate) const LIT_MEM: bool = cfg!(feature = "lit-mem");
+
+/// number of length codes, not counting the special END_BLOCK code
+pub(crate) const LENGTH_CODES: usize = 29;
+/// number of literal bytes 0..255
+pub(crate) const LITERALS: usize = 256;
+/// number of Literal or Length codes, including the END_BLOCK code
+pub(crate) const L_CODES: usize = LITERALS + 1 + LENGTH_CODES;
+/// number of distance codes
+pub(crate) const D_CODES: usize = 30;
+/// number of codes used to transfer the bit lengths
+pub(crate) const BL_CODES: usize = 19;
+/// maximum heap size
+pub(crate) const HEAP_SIZE: usize = 2 * L_CODES + 1;
+
 /// number of elements in hash table
 pub(crate) const HASH_SIZE: usize = 65536;
 /// log2(HASH_SIZE)
@@ -57,7 +78,43 @@ pub(crate) const HASH_BITS: u32 = 16;
 #[allow(non_camel_case_types)]
 pub(crate) type Pos = u16;
 
-/// The leading fields of the C deflate_state, up to the last one that the Rust sources use. The
+/// Data structure describing a single value and its code string.
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub(crate) struct ct_data {
+    /// frequency count or bit string
+    pub(crate) fc: u16,
+    /// father node in Huffman tree or length of bit string
+    pub(crate) dl: u16,
+}
+
+#[allow(non_camel_case_types, dead_code)]
+#[repr(C)]
+pub(crate) struct tree_desc {
+    /// the dynamic tree
+    pub(crate) dyn_tree: *mut ct_data,
+    /// largest code with non zero frequency
+    pub(crate) max_code: c_int,
+    /// the corresponding static tree
+    pub(crate) stat_desc: *const c_void,
+}
+
+/// The state of a block after a compression function returns
+#[allow(non_camel_case_types, dead_code)]
+#[repr(C)]
+pub enum block_state {
+    /// block not completed, need more input or more output
+    need_more,
+    /// block flush performed
+    block_done,
+    /// finish started, need only more output at next deflate
+    finish_started,
+    /// finish done, accept no more input or output
+    finish_done,
+}
+
+/// The fields of the C deflate_state up to the last one that the Rust sources use. The
 /// structure is longer than this in C, so it must only be used through a pointer. The build
 /// checks every field offset against the C definition.
 #[allow(non_camel_case_types, dead_code)]
@@ -165,6 +222,65 @@ pub struct deflate_state {
     pub(crate) good_match: c_uint,
     /// Stop searching when current match exceeds this
     pub(crate) nice_match: c_int,
+    /// bytes at end of window left to insert
+    pub(crate) insert: c_uint,
+    /// Last number of used bits when going to a byte boundary.
+    pub(crate) bi_used: i32,
+    /// Output buffer.
+    /// Bits are inserted starting at the bottom (least significant bits).
+    pub(crate) bi_buf: u64,
+    /// Number of valid bits in bi_buf.
+    /// All bits above the last valid bit are always zero.
+    pub(crate) bi_valid: i32,
+    /// Keeps Cacheline 3 aligned
+    pub(crate) padding: [i32; 2],
+
+    /* used by trees.c: */
+    /// Size of match buffer for literals/lengths.
+    pub(crate) lit_bufsize: c_uint,
+
+    /* Cacheline 3 */
+    /// buffer for distances
+    #[cfg(feature = "lit-mem")]
+    pub(crate) d_buf: *mut u16,
+    /// buffer for literals/lengths
+    #[cfg(feature = "lit-mem")]
+    pub(crate) l_buf: *mut u8,
+    /// buffer for distances and literals/lengths
+    #[cfg(not(feature = "lit-mem"))]
+    pub(crate) sym_buf: *mut u8,
+
+    /// running index in symbol buffer
+    pub(crate) sym_next: c_uint,
+    /// symbol table full when sym_next reaches this
+    pub(crate) sym_end: c_uint,
+
+    /// bit length of current block with optimal trees
+    pub(crate) opt_len: c_uint,
+    /// bit length of current block with static trees
+    pub(crate) static_len: c_uint,
+
+    /// desc. for literal tree
+    pub(crate) l_desc: tree_desc,
+    /// desc. for distance tree
+    pub(crate) d_desc: tree_desc,
+    /// desc. for bit length tree
+    pub(crate) bl_desc: tree_desc,
+
+    /// number of codes at each bit length for an optimal tree
+    pub(crate) bl_count: [u16; MAX_BITS + 1],
+
+    /// build_tree() packed leaf entries
+    pub(crate) pq_leaves: [u32; L_CODES + 1],
+    /// build_tree() radix buffer and internal node FIFO
+    pub(crate) pq_scratch: [u32; L_CODES + 1],
+
+    /// literal and length tree
+    pub(crate) dyn_ltree: [ct_data; HEAP_SIZE],
+    /// distance tree
+    pub(crate) dyn_dtree: [ct_data; 2 * D_CODES + 1],
+    /// Huffman tree for bit lengths
+    pub(crate) bl_tree: [ct_data; 2 * BL_CODES + 1],
 }
 
 /// Minimum amount of lookahead, except at the end of the input file.

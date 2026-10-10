@@ -112,3 +112,10 @@ pub const Z_BEST_SPEED: i32 = 1;
 pub const Z_BEST_COMPRESSION: i32 = 9;
 pub const Z_DEFAULT_COMPRESSION: i32 = -1;
 /* compression levels */
+
+pub const Z_FILTERED: i32 = 1;
+pub const Z_HUFFMAN_ONLY: i32 = 2;
+pub const Z_RLE: i32 = 3;
+pub const Z_FIXED: i32 = 4;
+pub const Z_DEFAULT_STRATEGY: i32 = 0;
+/* compression strategy; see deflateInit2() below for details */

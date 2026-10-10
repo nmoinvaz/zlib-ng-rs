@@ -14,6 +14,9 @@ pub(crate) const ADLER32_INITIAL_VALUE: u32 = 1;
 /// initial crc-32 hash value
 pub(crate) const CRC32_INITIAL_VALUE: u32 = 0;
 
+/// All codes must not exceed MAX_BITS bits
+pub(crate) const MAX_BITS: usize = 15;
+
 /// The minimum match length mandated by the deflate standard
 pub(crate) const STD_MIN_MATCH: usize = 3;
 /// The maximum match length mandated by the deflate standard

@@ -1294,7 +1294,6 @@ set(ZLIB_PRIVATE_HDRS
 set(ZLIB_SRCS
     deflate.c
     deflate_fast.c
-    deflate_huff.c
     deflate_medium.c
     deflate_quick.c
     deflate_rle.c
@@ -1595,6 +1594,29 @@ if(SIZEOF_Z_OFF64_T EQUAL 4)
 elseif(NOT SIZEOF_Z_OFF64_T EQUAL 8)
     message(FATAL_ERROR "The Rust sources need z_off64_t to be 4 or 8 bytes.")
 endif()
+# LIT_MEM follows the compiler and the architecture, so ask the C sources whether they use it.
+get_directory_property(RUST_DEFINITIONS COMPILE_DEFINITIONS)
+set(CMAKE_REQUIRED_DEFINITIONS)
+foreach(RUST_DEFINITION ${RUST_DEFINITIONS})
+    list(APPEND CMAKE_REQUIRED_DEFINITIONS -D${RUST_DEFINITION})
+endforeach()
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+check_c_source_compiles(
+    "#include \"zbuild.h\"
+    #include \"deflate.h\"
+    #ifndef LIT_MEM
+    #  error LIT_MEM is not defined
+    #endif
+    int main(void) { return 0; }"
+    RUST_LIT_MEM)
+unset(CMAKE_REQUIRED_DEFINITIONS)
+unset(CMAKE_REQUIRED_INCLUDES)
+if(RUST_LIT_MEM)
+    list(APPEND RUST_FEATURES lit-mem)
+    set(RUST_LAYOUT_SYM_FIELDS d_buf l_buf)
+else()
+    set(RUST_LAYOUT_SYM_FIELDS sym_buf)
+endif()
 list(APPEND RUST_FEATURES c-layout)
 string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
 list(APPEND RUST_ARGS --features ${RUST_FEATURES})
@@ -1602,20 +1624,28 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 # The C sources still own the state structures. A probe compiled with the flags of the library
 # records their layout, and the Rust sources assert that their view of each structure matches it.
 # An entry that starts with const becomes a Rust constant with the value from C instead.
-set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP)
+set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP
+    RUST_LAYOUT_LIT_MEM LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS
+    "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
-    "const OPTIMAL_CMP: u32")
+    "const OPTIMAL_CMP: u32"
+    "crate::deflate::LIT_MEM as usize" crate::deflate::LITERALS crate::deflate::L_CODES crate::deflate::D_CODES
+    crate::deflate::BL_CODES crate::deflate::HEAP_SIZE crate::zutil::MAX_BITS
+    "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
         ins_h match_length match_available prev_match match_start prev_length max_chain_length max_lazy_match
-        level strategy good_match nice_match)
+        level strategy good_match nice_match insert bi_used bi_buf bi_valid lit_bufsize
+        ${RUST_LAYOUT_SYM_FIELDS} sym_next sym_end opt_len static_len l_desc d_desc bl_desc bl_count pq_leaves
+        pq_scratch dyn_ltree dyn_dtree bl_tree)
     list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(deflate_state, ${FIELD})")
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()
 
-set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include <stddef.h>\n\n")
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include <stddef.h>\n\n")
 string(APPEND RUST_LAYOUT_PROBE
+    "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
     "#define DIGIT(n, d) ((char)('0' + ((n) / (d)) % 10))\n"
     "#define LAYOUT(index, value) \\\n"
     "    const char zng_layout_##index[] = {'Z', 'N', 'G', 'L', 'A', 'Y', 'O', 'U', 'T', ':', \\\n"
