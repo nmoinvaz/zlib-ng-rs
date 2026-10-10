@@ -19,6 +19,7 @@ mod crc32_p;
 mod deflate;
 pub mod deflate_fast;
 pub mod deflate_huff;
+pub mod deflate_medium;
 mod deflate_p;
 pub mod deflate_rle;
 mod fallback_builtins;

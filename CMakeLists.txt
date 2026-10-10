@@ -1271,7 +1271,6 @@ set(ZLIB_PRIVATE_HDRS
     crc32_braid_tbl.h
     crc32_chorba_p.h
     deflate.h
-    deflate_medium_tpl.h
     deflate_p.h
     fallback_builtins.h
     functable.h
@@ -1293,7 +1292,6 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     deflate.c
-    deflate_medium.c
     deflate_quick.c
     deflate_slow.c
     deflate_stored.c
