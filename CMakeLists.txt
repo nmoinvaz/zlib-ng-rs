@@ -1296,7 +1296,6 @@ set(ZLIB_SRCS
     infback.c
     inflate.c
     inftrees.c
-    trees.c
     zutil.c
 )
 

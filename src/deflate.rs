@@ -4,6 +4,7 @@
 use core::ffi::c_char;
 use core::ffi::{c_int, c_uint, c_ulong, c_void};
 
+use crate::trees::static_tree_desc;
 use crate::zbuild::prefix;
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
@@ -107,7 +108,7 @@ pub(crate) struct tree_desc {
     /// largest code with non zero frequency
     pub(crate) max_code: c_int,
     /// the corresponding static tree
-    pub(crate) stat_desc: *const c_void,
+    pub(crate) stat_desc: *const static_tree_desc,
 }
 
 /// The state of a block after a compression function returns
@@ -397,6 +398,78 @@ pub(crate) unsafe fn sent_bits_add(s: *mut deflate_state, bits: u32) {
                 .cast::<c_ulong>();
             count.write(count.read().wrapping_add(c_ulong::from(bits)));
         }
+    }
+}
+
+/// Rounds compressed_len up to a byte boundary. The count only exists with ZLIB_DEBUG.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn cmpr_bits_align(s: *mut deflate_state) {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the count
+        // at this offset when it is built with ZLIB_DEBUG.
+        unsafe {
+            let count = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_COMPRESSED_LEN)
+                .cast::<c_ulong>();
+            count.write(count.read().wrapping_add(7) & !7);
+        }
+    }
+}
+
+/// Clears compressed_len and bits_sent, which only exist with ZLIB_DEBUG.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state.
+#[inline(always)]
+pub(crate) unsafe fn debug_bits_reset(s: *mut deflate_state) {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the
+        // counts at these offsets when it is built with ZLIB_DEBUG.
+        unsafe {
+            s.cast::<u8>()
+                .add(DEFLATE_STATE_COMPRESSED_LEN)
+                .cast::<c_ulong>()
+                .write(0);
+            s.cast::<u8>()
+                .add(DEFLATE_STATE_BITS_SENT)
+                .cast::<c_ulong>()
+                .write(0);
+        }
+    }
+}
+
+/// Whether compressed_len equals bits_sent. Always true without ZLIB_DEBUG, which has no counts.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
+#[inline(always)]
+pub(crate) unsafe fn debug_bits_match(s: *mut deflate_state) -> bool {
+    if ZLIB_DEBUG {
+        // SAFETY: the caller guarantees s points to the full C structure, which holds the
+        // counts at these offsets when it is built with ZLIB_DEBUG.
+        unsafe {
+            let compressed_len = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_COMPRESSED_LEN)
+                .cast::<c_ulong>()
+                .read();
+            let bits_sent = s
+                .cast::<u8>()
+                .add(DEFLATE_STATE_BITS_SENT)
+                .cast::<c_ulong>()
+                .read();
+            compressed_len == bits_sent
+        }
+    } else {
+        true
     }
 }
 

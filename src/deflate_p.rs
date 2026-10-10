@@ -148,6 +148,17 @@ pub(crate) unsafe fn check_match(
 ) {
 }
 
+/* ===========================================================================
+ * Reverse the first len bits of a code using bit manipulation
+ */
+#[inline(always)]
+pub(crate) fn bi_reverse(code: u16, len: u16) -> u16 {
+    /* code: the value to invert */
+    /* len: its bit length */
+    debug_assert!((1..=15).contains(&len), "code length must be 1-15");
+    code.reverse_bits() >> (16 - len)
+}
+
 /// Whether deflate computes the check value itself, which hardware deflate on s390 takes over.
 #[cfg(not(feature = "s390-dfltcc-deflate"))]
 #[inline(always)]

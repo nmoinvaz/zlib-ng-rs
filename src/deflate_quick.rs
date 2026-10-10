@@ -42,7 +42,7 @@ const WANT_MATCH: u32 = WANT_MIN_MATCH as u32;
 unsafe fn quick_start_block(s: *mut deflate_state, strstart: u32, last: bool) {
     // SAFETY: the caller guarantees the state is valid and the pending buffer has room.
     unsafe {
-        zng_tr_emit_tree(s, STATIC_TREES, last);
+        zng_tr_emit_tree(s, STATIC_TREES, c_int::from(last));
         (*s).block_open = 1 + u32::from(last);
         (*s).block_start = strstart as i32;
     }
@@ -58,7 +58,7 @@ unsafe fn quick_end_block(s: *mut deflate_state, strstart: u32, last: bool) -> b
     // has room.
     unsafe {
         if (*s).block_open != 0 {
-            zng_tr_emit_end_block(s, static_ltree.as_ptr(), last);
+            zng_tr_emit_end_block(s, static_ltree.as_ptr(), c_int::from(last));
             (*s).block_open = 0;
             (*s).block_start = strstart as i32;
             flush_pending((*s).strm);

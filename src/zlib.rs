@@ -119,3 +119,10 @@ pub const Z_RLE: i32 = 3;
 pub const Z_FIXED: i32 = 4;
 pub const Z_DEFAULT_STRATEGY: i32 = 0;
 /* compression strategy; see deflateInit2() below for details */
+
+pub const Z_BINARY: i32 = 0;
+pub const Z_TEXT: i32 = 1;
+/// for compatibility with 1.2.2 and earlier
+pub const Z_ASCII: i32 = Z_TEXT;
+pub const Z_UNKNOWN: i32 = 2;
+/* Possible values of the data_type field for deflate() */

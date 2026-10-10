@@ -33,6 +33,7 @@ mod insert_string_p;
 mod match_tpl;
 mod trees;
 mod trees_emit;
+mod trees_tbl;
 pub mod uncompr;
 pub mod zbuild;
 pub mod zconf;

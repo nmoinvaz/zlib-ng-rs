@@ -1,10 +1,13 @@
-//! Port of the parts of trees_emit.h that the Rust sources need.
+//! Port of trees_emit.h, the bit buffer and the code emitters.
+
+use core::ffi::c_int;
 
 use crate::deflate::{
     BIT_BUF_SIZE, D_CODES, END_BLOCK, L_CODES, LITERALS, cmpr_bits_add, ct_data, deflate_state,
     put_byte, put_short, put_uint32, put_uint64, sent_bits_add, sent_bits_align,
 };
 use crate::trees::{d_code, dmask_extra, lmask_extra, zng_length_code};
+use crate::zmemory::zng_memwrite_8;
 
 /* If not enough room in bi_buf, use (valid) bits from bi_buf and
  * (64 - bi_valid) bits from value, leaving (width - (64-bi_valid))
@@ -43,13 +46,55 @@ pub(crate) unsafe fn send_bits(
     *bi_valid = total_bits;
 }
 
+/* Merge bits into the bit buffer without flushing. The caller must guarantee room,
+ * i.e. bi_valid + len <= 64. Pair with send_bits_flush, which leaves at most 7 bits. */
+/// # Safety
+///
+/// `s` must point to a deflate_state that deflate has set up.
+#[inline(always)]
+pub(crate) unsafe fn send_bits_merge(
+    s: *mut deflate_state,
+    val: u64,
+    len: u32,
+    bi_buf: &mut u64,
+    bi_valid: &mut u32,
+) {
+    debug_assert!(*bi_valid + len <= 64, "bit buffer overflow");
+    debug_assert!(len > 0 && len <= BIT_BUF_SIZE, "invalid length");
+    // SAFETY: the caller guarantees the state is valid.
+    unsafe { sent_bits_add(s, len) };
+    *bi_buf |= val << *bi_valid;
+    *bi_valid += len;
+}
+
+/* Store the bit buffer unconditionally and consume its complete bytes, leaving at most
+ * 7 valid bits. The unconditional 8-byte store reaches up to 7 bytes past the logical
+ * output position, which the pending buffer layout must reserve room for
+ * (see PENDING_BUF_PAD in deflate.c). */
+/// # Safety
+///
+/// `pending_buf` must be valid for writes of `pending` + 8 bytes.
+#[inline(always)]
+pub(crate) unsafe fn send_bits_flush(
+    pending_buf: *mut u8,
+    bi_buf: &mut u64,
+    bi_valid: &mut u32,
+    pending: &mut u32,
+) {
+    // SAFETY: the caller guarantees the buffer has room for the 8 bytes.
+    unsafe { zng_memwrite_8(pending_buf.add(*pending as usize), bi_buf.to_le()) };
+    *pending += *bi_valid >> 3;
+    *bi_buf >>= *bi_valid & !7;
+    *bi_valid &= 7;
+}
+
 /* Send a code of the given tree. c and tree must not have side effects */
 /// # Safety
 ///
 /// `tree` must hold more than `c` codes, and `s` must point to a deflate_state whose pending
 /// buffer has room for 8 more bytes.
 #[inline(always)]
-unsafe fn send_code(
+pub(crate) unsafe fn send_code(
     s: *mut deflate_state,
     c: usize,
     tree: *const ct_data,
@@ -60,6 +105,26 @@ unsafe fn send_code(
     unsafe {
         let code = *tree.add(c);
         send_bits(s, u64::from(code.fc), u32::from(code.dl), bi_buf, bi_valid);
+    }
+}
+
+/* Merge a code of the given tree without flushing. c and tree must not have side effects */
+/// # Safety
+///
+/// `tree` must hold more than `c` codes, and `s` must point to a deflate_state that deflate has
+/// set up.
+#[inline(always)]
+pub(crate) unsafe fn send_code_merge(
+    s: *mut deflate_state,
+    c: usize,
+    tree: *const ct_data,
+    bi_buf: &mut u64,
+    bi_valid: &mut u32,
+) {
+    // SAFETY: the caller guarantees c is inside the tree.
+    unsafe {
+        let code = *tree.add(c);
+        send_bits_merge(s, u64::from(code.fc), u32::from(code.dl), bi_buf, bi_valid);
     }
 }
 
@@ -274,12 +339,12 @@ pub(crate) unsafe fn zng_tr_emit_dist(
 ///
 /// `s` must point to a deflate_state whose pending buffer has room for 8 more bytes.
 #[inline(always)]
-pub(crate) unsafe fn zng_tr_emit_tree(s: *mut deflate_state, block_type: u32, last: bool) {
+pub(crate) unsafe fn zng_tr_emit_tree(s: *mut deflate_state, block_type: u32, last: c_int) {
     // SAFETY: the caller guarantees the state is valid and the pending buffer has room.
     unsafe {
         let mut bi_valid = (*s).bi_valid as u32;
         let mut bi_buf = (*s).bi_buf;
-        let header_bits = (block_type << 1) + u32::from(last);
+        let header_bits = (block_type << 1) + last as u32;
         send_bits(s, u64::from(header_bits), 3, &mut bi_buf, &mut bi_valid);
         cmpr_bits_add(s, 3);
         (*s).bi_valid = bi_valid as i32;
@@ -313,7 +378,7 @@ pub(crate) unsafe fn zng_tr_emit_align(s: *mut deflate_state) {
 pub(crate) unsafe fn zng_tr_emit_end_block(
     s: *mut deflate_state,
     ltree: *const ct_data,
-    last: bool,
+    last: c_int,
 ) {
     // SAFETY: the caller upholds the contracts of zng_emit_end_block and zng_tr_emit_align.
     unsafe {
@@ -323,7 +388,7 @@ pub(crate) unsafe fn zng_tr_emit_end_block(
         (*s).bi_buf = bi_buf;
         (*s).bi_valid = bi_valid as i32;
         cmpr_bits_add(s, 7);
-        if last {
+        if last != 0 {
             zng_tr_emit_align(s);
         }
     }

@@ -17,8 +17,10 @@ pub(crate) const CRC32_INITIAL_VALUE: u32 = 0;
 /// All codes must not exceed MAX_BITS bits
 pub(crate) const MAX_BITS: usize = 15;
 
-/// The block type of a block that uses the static trees
+/* The three kinds of block type */
+pub(crate) const STORED_BLOCK: u32 = 0;
 pub(crate) const STATIC_TREES: u32 = 1;
+pub(crate) const DYN_TREES: u32 = 2;
 
 /// The minimum match length mandated by the deflate standard
 pub(crate) const STD_MIN_MATCH: usize = 3;
