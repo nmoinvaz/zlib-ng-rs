@@ -92,6 +92,7 @@ gzread_mangle.h
 /test/*.dir/
 /build/
 /build[.-]*/
+/target/
 /btmp[12]/
 /pkgtmp[12]/
 

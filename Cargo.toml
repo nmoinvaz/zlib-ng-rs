@@ -1,0 +1,28 @@
+[package]
+name = "zlib-ng"
+version = "2.3.90"
+edition = "2024"
+rust-version = "1.88"
+license = "Zlib"
+description = "zlib data compression library for the next generation systems"
+repository = "https://github.com/nmoinvaz/zlib-ng-rs"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+# The tests are the C and C++ sources in the test directory.
+test = false
+doctest = false
+
+[features]
+# Export the zlib compatible API instead of the zlib-ng native API.
+zlib-compat = []
+
+# Unwinding into C callers is undefined behavior.
+[profile.dev]
+panic = "abort"
+codegen-units = 1
+
+[profile.release]
+panic = "abort"
+codegen-units = 1

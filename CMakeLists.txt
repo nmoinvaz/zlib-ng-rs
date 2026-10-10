@@ -1346,6 +1346,49 @@ if(WITH_GZFILEOP)
     list(APPEND ZLIB_ALL_SRCS ${ZLIB_GZFILE_PRIVATE_HDRS} ${ZLIB_GZFILE_SRCS})
 endif()
 
+#============================================================================
+# Rust
+#============================================================================
+
+find_program(CARGO_EXECUTABLE cargo)
+if(NOT CARGO_EXECUTABLE)
+    message(FATAL_ERROR "Could not find cargo, which is required to build the Rust sources.")
+endif()
+
+set(RUST_TARGET "" CACHE STRING "Rust target triple to build for when cross-compiling")
+
+set(RUST_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/cargo)
+set(RUST_OUTPUT_DIR ${RUST_TARGET_DIR})
+set(RUST_ARGS --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml --target-dir ${RUST_TARGET_DIR})
+if(RUST_TARGET)
+    list(APPEND RUST_ARGS --target ${RUST_TARGET})
+    set(RUST_OUTPUT_DIR ${RUST_TARGET_DIR}/${RUST_TARGET})
+endif()
+if(ZLIB_COMPAT)
+    list(APPEND RUST_ARGS --features zlib-compat)
+endif()
+
+set(RUST_LIBRARY_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}zlib_ng${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(RUST_LIBRARY ${RUST_TARGET_DIR}/${RUST_LIBRARY_NAME})
+set(RUST_OBJECT ${RUST_TARGET_DIR}/zlib_ng${CMAKE_C_OUTPUT_EXTENSION})
+
+# The object holds the crate and is linked like any other object of the library. The static library
+# only supplies the parts of the Rust core library that the object refers to.
+# Cargo tracks its own dependencies, so it runs on every build and only rebuilds when needed.
+add_custom_target(zlib-ng-cargo
+    COMMAND ${CARGO_EXECUTABLE} rustc ${RUST_ARGS} --profile $<IF:$<CONFIG:Debug>,dev,release>
+        -- --emit=obj=${RUST_OBJECT}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${RUST_OUTPUT_DIR}/$<IF:$<CONFIG:Debug>,debug,release>/${RUST_LIBRARY_NAME} ${RUST_LIBRARY}
+    BYPRODUCTS ${RUST_OBJECT} ${RUST_LIBRARY}
+    COMMENT "Building Rust sources"
+    VERBATIM)
+set_source_files_properties(${RUST_OBJECT} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+
+add_library(zlib-ng-rust STATIC IMPORTED GLOBAL)
+set_target_properties(zlib-ng-rust PROPERTIES IMPORTED_LOCATION ${RUST_LIBRARY})
+add_dependencies(zlib-ng-rust zlib-ng-cargo)
+
 get_property(TARGET_SUPPORTS_SHARED_LIBS GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
 if(NOT TARGET_SUPPORTS_SHARED_LIBS)
     if(NOT DEFINED BUILD_SHARED_LIBS)
@@ -1425,6 +1468,9 @@ foreach(ZLIB_INSTALL_LIBRARY ${ZLIB_INSTALL_LIBRARIES})
     target_include_directories(${ZLIB_INSTALL_LIBRARY} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}$<SEMICOLON>${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+    target_sources(${ZLIB_INSTALL_LIBRARY} PRIVATE ${RUST_OBJECT})
+    add_dependencies(${ZLIB_INSTALL_LIBRARY} zlib-ng-cargo)
+    target_link_libraries(${ZLIB_INSTALL_LIBRARY} PRIVATE zlib-ng-rust)
 endforeach()
 
 if(WIN32)
