@@ -9,7 +9,7 @@
 use core::ffi::c_ulong;
 
 use crate::adler32_p::BASE;
-use crate::functable::functable_adler32;
+use crate::functable;
 use crate::zbuild::{prefix, z_checksum_t};
 #[cfg(feature = "zlib-compat")]
 use crate::zconf::z_off_t;
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn adler32_z(
         return z_checksum_t::from(ADLER32_INITIAL_VALUE);
     }
     // SAFETY: the caller guarantees buf is valid for reads of len bytes.
-    z_checksum_t::from(unsafe { functable_adler32(adler as u32, buf, len) })
+    z_checksum_t::from(unsafe { functable::adler32(adler as u32, buf, len) })
 }
 
 /* ========================================================================= */
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn adler32(adler: z_checksum_t, buf: *const u8, len: u32) 
         return z_checksum_t::from(ADLER32_INITIAL_VALUE);
     }
     // SAFETY: the caller guarantees buf is valid for reads of len bytes.
-    z_checksum_t::from(unsafe { functable_adler32(adler as u32, buf, len as usize) })
+    z_checksum_t::from(unsafe { functable::adler32(adler as u32, buf, len as usize) })
 }
 
 /* ========================================================================= */

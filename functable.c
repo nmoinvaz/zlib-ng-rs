@@ -596,7 +596,9 @@ Z_INTERNAL struct functable_s functable = {
 
 #endif
 
-/* Entry points for the sources that are built from Rust */
+#ifdef DISABLE_RUNTIME_CPU_DETECTION
+/* Entry points for the sources that are built from Rust. They cannot expand the native_ macros
+ * that stand in for the function table without runtime CPU detection. */
 #include "zbuild.h"
 #include "functable.h"
 
@@ -607,3 +609,4 @@ Z_INTERNAL uint32_t functable_adler32(uint32_t adler, const uint8_t *buf, size_t
 Z_INTERNAL uint32_t functable_crc32(uint32_t crc, const uint8_t *buf, size_t len) {
     return FUNCTABLE_CALL(crc32)(crc, buf, len);
 }
+#endif

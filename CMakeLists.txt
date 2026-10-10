@@ -1616,6 +1616,9 @@ if(RUST_LIT_MEM)
 else()
     set(RUST_LAYOUT_SYM_FIELDS sym_buf)
 endif()
+if(WITH_RUNTIME_CPU_DETECTION)
+    list(APPEND RUST_FEATURES runtime-cpu-detection)
+endif()
 list(APPEND RUST_FEATURES c-layout)
 string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
 list(APPEND RUST_ARGS --features ${RUST_FEATURES})
@@ -1624,12 +1627,13 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 # records their layout, and the Rust sources assert that their view of each structure matches it.
 # An entry that starts with const becomes a Rust constant with the value from C instead.
 set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP
-    RUST_LAYOUT_LIT_MEM LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS DIST_CODE_LEN
+    RUST_LAYOUT_LIT_MEM RUST_LAYOUT_RUNTIME LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS DIST_CODE_LEN
     "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
     "const OPTIMAL_CMP: u32"
-    "crate::deflate::LIT_MEM as usize" crate::deflate::LITERALS crate::deflate::L_CODES crate::deflate::D_CODES
+    "crate::deflate::LIT_MEM as usize" "crate::functable::RUNTIME_CPU_DETECTION as usize"
+    crate::deflate::LITERALS crate::deflate::L_CODES crate::deflate::D_CODES
     crate::deflate::BL_CODES crate::deflate::HEAP_SIZE crate::zutil::MAX_BITS crate::trees::DIST_CODE_LEN
     "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
@@ -1642,9 +1646,22 @@ foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()
 
-set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include <stddef.h>\n\n")
+# The function table only exists with runtime CPU detection.
+if(WITH_RUNTIME_CPU_DETECTION)
+    foreach(FIELD force_init adler32 adler32_copy chunkmemset_safe compare256 crc32 crc32_copy inflate_fast
+            inflate_fast_safe longest_match longest_match_slow_knuth longest_match_slow_roll slide_hash
+            slide_hash_head)
+        list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(struct functable_s, ${FIELD})")
+        list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::functable::functable_s, ${FIELD})")
+    endforeach()
+    list(APPEND RUST_LAYOUT_C_CHECKS "sizeof(struct functable_s)")
+    list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::functable::functable_s>()")
+endif()
+
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
 string(APPEND RUST_LAYOUT_PROBE
     "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
+    "#ifdef DISABLE_RUNTIME_CPU_DETECTION\n#  define RUST_LAYOUT_RUNTIME 0\n#else\n#  define RUST_LAYOUT_RUNTIME 1\n#endif\n\n"
     "#define DIGIT(n, d) ((char)('0' + ((n) / (d)) % 10))\n"
     "#define LAYOUT(index, value) \\\n"
     "    const char zng_layout_##index[] = {'Z', 'N', 'G', 'L', 'A', 'Y', 'O', 'U', 'T', ':', \\\n"
