@@ -24,6 +24,15 @@ pub(crate) fn likely(condition: bool) -> bool {
     condition
 }
 
+/// Marks a condition as usually false, like UNLIKELY in zbuild.h.
+#[inline(always)]
+pub(crate) fn unlikely(condition: bool) -> bool {
+    if condition {
+        cold();
+    }
+    condition
+}
+
 /// Name of a symbol in the zlib compatible API or the zlib-ng native API
 #[cfg(feature = "zlib-compat")]
 macro_rules! prefix {

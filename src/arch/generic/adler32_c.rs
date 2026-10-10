@@ -7,7 +7,7 @@ use core::{ptr, slice};
 use crate::adler32_p::{
     BASE, NMAX_ALIGNED8, adler32_copy_align, adler32_copy_tail, adler32_swar_words,
 };
-use crate::zbuild::{align_diff, align_down};
+use crate::zbuild::{align_diff, align_down, unlikely};
 
 pub(crate) fn adler32(adler: u32, buf: &[u8]) -> u32 {
     /* split Adler-32 into component sums */
@@ -15,12 +15,12 @@ pub(crate) fn adler32(adler: u32, buf: &[u8]) -> u32 {
     let mut adler = adler & 0xffff;
 
     /* in case user likes doing a byte at a time, keep it fast */
-    if buf.len() == 1 {
+    if unlikely(buf.len() == 1) {
         return adler32_copy_tail(adler, buf, sum2, true);
     }
 
     /* in case short lengths are provided, keep it somewhat fast */
-    if buf.len() < 16 {
+    if unlikely(buf.len() < 16) {
         return adler32_copy_tail(adler, buf, sum2, true);
     }
 

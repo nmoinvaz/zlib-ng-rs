@@ -14,7 +14,7 @@ use core::slice;
 use crate::crc32_braid_tbl::CRC_TABLE;
 use crate::crc32_p::crc32_copy_small;
 use crate::functable::functable_crc32;
-use crate::zbuild::{prefix, z_checksum_t};
+use crate::zbuild::{prefix, unlikely, z_checksum_t};
 use crate::zutil::CRC32_INITIAL_VALUE;
 
 /* ========================================================================= */
@@ -30,7 +30,7 @@ pub extern "C" fn get_crc_table() -> *const u32 {
 /// `buf` must be valid for reads of `len` bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn crc32_small(crc: u32, buf: *const u8, len: usize) -> u32 {
-    if len >= 32 {
+    if unlikely(len >= 32) {
         // SAFETY: the caller guarantees buf is valid for reads of len bytes.
         return unsafe { functable_crc32(crc, buf, len) };
     }
