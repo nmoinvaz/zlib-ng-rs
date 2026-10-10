@@ -1296,7 +1296,6 @@ set(ZLIB_SRCS
     deflate_fast.c
     deflate_medium.c
     deflate_quick.c
-    deflate_rle.c
     deflate_slow.c
     deflate_stored.c
     functable.c
@@ -1625,13 +1624,13 @@ list(APPEND RUST_ARGS --features ${RUST_FEATURES})
 # records their layout, and the Rust sources assert that their view of each structure matches it.
 # An entry that starts with const becomes a Rust constant with the value from C instead.
 set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MIN_MATCH MIN_LOOKAHEAD OPTIMAL_CMP
-    RUST_LAYOUT_LIT_MEM LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS
+    RUST_LAYOUT_LIT_MEM LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS DIST_CODE_LEN
     "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
     "const OPTIMAL_CMP: u32"
     "crate::deflate::LIT_MEM as usize" crate::deflate::LITERALS crate::deflate::L_CODES crate::deflate::D_CODES
-    crate::deflate::BL_CODES crate::deflate::HEAP_SIZE crate::zutil::MAX_BITS
+    crate::deflate::BL_CODES crate::deflate::HEAP_SIZE crate::zutil::MAX_BITS crate::trees::DIST_CODE_LEN
     "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head

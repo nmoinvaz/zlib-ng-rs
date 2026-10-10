@@ -7,6 +7,7 @@
 pub mod adler32;
 mod adler32_p;
 mod arch;
+mod compare256_rle;
 pub mod compress;
 pub mod crc32;
 pub mod crc32_braid_comb;
@@ -18,6 +19,7 @@ mod crc32_p;
 mod deflate;
 pub mod deflate_huff;
 mod deflate_p;
+pub mod deflate_rle;
 mod fallback_builtins;
 mod functable;
 mod inflate;
