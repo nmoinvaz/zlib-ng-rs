@@ -9,6 +9,7 @@ mod adler32_p;
 mod arch;
 pub mod compress;
 pub mod crc32;
+pub mod crc32_braid_comb;
 mod crc32_braid_comb_p;
 mod crc32_braid_p;
 mod crc32_braid_tbl;
