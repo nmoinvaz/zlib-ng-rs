@@ -1292,7 +1292,6 @@ set(ZLIB_PRIVATE_HDRS
     zutil_p.h
 )
 set(ZLIB_SRCS
-    adler32.c
     crc32.c
     crc32_braid_comb.c
     deflate.c
@@ -1360,20 +1359,6 @@ if(RUST_TARGET)
     list(APPEND RUST_ARGS --target ${RUST_TARGET})
     set(RUST_OUTPUT_DIR ${RUST_TARGET_DIR}/${RUST_TARGET})
 endif()
-set(RUST_FEATURES)
-if(ZLIB_COMPAT)
-    list(APPEND RUST_FEATURES zlib-compat)
-endif()
-if(NOT WITH_NEW_STRATEGIES)
-    list(APPEND RUST_FEATURES no-quick-strategy)
-endif()
-if(WITH_DFLTCC_DEFLATE)
-    list(APPEND RUST_FEATURES s390-dfltcc-deflate)
-endif()
-if(RUST_FEATURES)
-    string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
-    list(APPEND RUST_ARGS --features ${RUST_FEATURES})
-endif()
 
 set(RUST_LIBRARY_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}zlib_ng${CMAKE_STATIC_LIBRARY_SUFFIX})
 set(RUST_LIBRARY ${RUST_TARGET_DIR}/${RUST_LIBRARY_NAME})
@@ -1381,15 +1366,6 @@ set(RUST_OBJECT ${RUST_TARGET_DIR}/zlib_ng${CMAKE_C_OUTPUT_EXTENSION})
 
 # The object holds the crate and is linked like any other object of the library. The static library
 # only supplies the parts of the Rust core library that the object refers to.
-# Cargo tracks its own dependencies, so it runs on every build and only rebuilds when needed.
-add_custom_target(zlib-ng-cargo
-    COMMAND ${CARGO_EXECUTABLE} rustc ${RUST_ARGS} --profile $<IF:$<CONFIG:Debug>,dev,release>
-        -- --emit=obj=${RUST_OBJECT}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${RUST_OUTPUT_DIR}/$<IF:$<CONFIG:Debug>,debug,release>/${RUST_LIBRARY_NAME} ${RUST_LIBRARY}
-    BYPRODUCTS ${RUST_OBJECT} ${RUST_LIBRARY}
-    COMMENT "Building Rust sources"
-    VERBATIM)
 set_source_files_properties(${RUST_OBJECT} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 
 add_library(zlib-ng-rust STATIC IMPORTED GLOBAL)
@@ -1595,6 +1571,50 @@ else()
         ${CMAKE_CURRENT_BINARY_DIR}/zlib_name_mangling${SUFFIX}.h COPYONLY)
 endif()
 # add_definitions(-DZLIB_SYMBOL_PREFIX=${ZLIB_SYMBOL_PREFIX}) # not needed
+
+# The offset types depend on the platform headers and compiler flags, so measure them from the
+# generated header.
+set(CMAKE_EXTRA_INCLUDE_FILES zconf${SUFFIX}.h)
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_CURRENT_BINARY_DIR})
+check_type_size(z_off_t SIZEOF_Z_OFF_T)
+check_type_size(z_off64_t SIZEOF_Z_OFF64_T)
+unset(CMAKE_EXTRA_INCLUDE_FILES)
+unset(CMAKE_REQUIRED_INCLUDES)
+
+set(RUST_FEATURES)
+if(ZLIB_COMPAT)
+    list(APPEND RUST_FEATURES zlib-compat)
+endif()
+if(NOT WITH_NEW_STRATEGIES)
+    list(APPEND RUST_FEATURES no-quick-strategy)
+endif()
+if(WITH_DFLTCC_DEFLATE)
+    list(APPEND RUST_FEATURES s390-dfltcc-deflate)
+endif()
+if(SIZEOF_Z_OFF_T EQUAL 4)
+    list(APPEND RUST_FEATURES z-off-t-32)
+elseif(NOT SIZEOF_Z_OFF_T EQUAL 8)
+    message(FATAL_ERROR "The Rust sources need z_off_t to be 4 or 8 bytes.")
+endif()
+if(SIZEOF_Z_OFF64_T EQUAL 4)
+    list(APPEND RUST_FEATURES z-off64-t-32)
+elseif(NOT SIZEOF_Z_OFF64_T EQUAL 8)
+    message(FATAL_ERROR "The Rust sources need z_off64_t to be 4 or 8 bytes.")
+endif()
+if(RUST_FEATURES)
+    string(REPLACE ";" "," RUST_FEATURES "${RUST_FEATURES}")
+    list(APPEND RUST_ARGS --features ${RUST_FEATURES})
+endif()
+
+# Cargo tracks its own dependencies, so it runs on every build and only rebuilds when needed.
+add_custom_target(zlib-ng-cargo
+    COMMAND ${CARGO_EXECUTABLE} rustc ${RUST_ARGS} --profile $<IF:$<CONFIG:Debug>,dev,release>
+        -- --emit=obj=${RUST_OBJECT}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${RUST_OUTPUT_DIR}/$<IF:$<CONFIG:Debug>,debug,release>/${RUST_LIBRARY_NAME} ${RUST_LIBRARY}
+    BYPRODUCTS ${RUST_OBJECT} ${RUST_LIBRARY}
+    COMMENT "Building Rust sources"
+    VERBATIM)
 
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)

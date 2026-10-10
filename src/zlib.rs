@@ -31,7 +31,7 @@
 use core::ffi::CStr;
 use core::ffi::{c_char, c_int, c_uint, c_ulong, c_void};
 
-use crate::zbuild::z_uintmax_t;
+use crate::zbuild::{z_checksum_t, z_uintmax_t};
 
 #[cfg(feature = "zlib-compat")]
 pub const ZLIB_VERSION: &CStr = c"1.3.2.zlib-ng";
@@ -78,11 +78,7 @@ pub struct z_stream {
     /// for deflate, or the decoding state for inflate
     pub data_type: c_int,
     /// Adler-32 or CRC-32 value of the uncompressed data
-    #[cfg(feature = "zlib-compat")]
-    pub adler: c_ulong,
-    /// Adler-32 or CRC-32 value of the uncompressed data
-    #[cfg(not(feature = "zlib-compat"))]
-    pub adler: u32,
+    pub adler: z_checksum_t,
     /// reserved for future use
     pub reserved: c_ulong,
 }

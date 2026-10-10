@@ -9,6 +9,9 @@
 
 #![cfg_attr(feature = "no-quick-strategy", allow(dead_code))]
 
+/// initial adler-32 hash value
+pub(crate) const ADLER32_INITIAL_VALUE: u32 = 1;
+
 /// zlib format overhead
 pub(crate) const ZLIB_WRAPLEN: usize = 6;
 

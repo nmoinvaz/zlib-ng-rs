@@ -21,6 +21,10 @@ zlib-compat = []
 no-quick-strategy = []
 # Deflate with DFLTCC on IBM Z.
 s390-dfltcc-deflate = []
+# z_off_t is 32 bits wide.
+z-off-t-32 = []
+# z_off64_t is 32 bits wide.
+z-off64-t-32 = []
 
 # Unwinding into C callers is undefined behavior.
 [profile.dev]

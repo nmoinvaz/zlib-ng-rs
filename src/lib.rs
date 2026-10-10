@@ -4,6 +4,7 @@
 
 #![no_std]
 
+pub mod adler32;
 mod adler32_p;
 mod arch;
 pub mod compress;
@@ -12,9 +13,11 @@ mod crc32_braid_p;
 mod crc32_braid_tbl;
 mod crc32_p;
 mod deflate;
+mod functable;
 mod inflate;
 pub mod uncompr;
 pub mod zbuild;
+pub mod zconf;
 pub mod zlib;
 mod zutil;
 

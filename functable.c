@@ -595,3 +595,11 @@ Z_INTERNAL struct functable_s functable = {
 };
 
 #endif
+
+/* Entry points for the sources that are built from Rust */
+#include "zbuild.h"
+#include "functable.h"
+
+Z_INTERNAL uint32_t functable_adler32(uint32_t adler, const uint8_t *buf, size_t len) {
+    return FUNCTABLE_CALL(adler32)(adler, buf, len);
+}

@@ -25,6 +25,14 @@ macro_rules! prefix {
 }
 pub(crate) use prefix;
 
+/// In zlib-compat the checksums use unsigned long, but zlib-ng use uint32_t
+#[cfg(feature = "zlib-compat")]
+#[allow(non_camel_case_types)]
+pub type z_checksum_t = core::ffi::c_ulong;
+#[cfg(not(feature = "zlib-compat"))]
+#[allow(non_camel_case_types)]
+pub type z_checksum_t = u32;
+
 /// In zlib-compat some functions and types use unsigned long, but zlib-ng use size_t
 #[cfg(feature = "zlib-compat")]
 #[allow(non_camel_case_types)]
