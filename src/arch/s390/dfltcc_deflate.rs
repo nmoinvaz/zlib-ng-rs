@@ -27,6 +27,8 @@ unsafe extern "C" {
     ) -> c_int;
     #[link_name = prefix!("dfltcc_deflate_done")]
     pub(crate) fn dfltcc_deflate_done(strm: *mut z_stream, flush: c_int) -> c_int;
+    // Only zng_deflateSetParams asks, which the zlib compatible API does not have.
+    #[cfg(not(feature = "zlib-compat"))]
     #[link_name = prefix!("dfltcc_can_set_reproducible")]
     pub(crate) fn dfltcc_can_set_reproducible(strm: *mut z_stream, reproducible: c_int) -> c_int;
     #[link_name = prefix!("dfltcc_deflate_set_dictionary")]
