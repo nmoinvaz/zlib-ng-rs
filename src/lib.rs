@@ -7,6 +7,7 @@
 pub mod adler32;
 mod adler32_p;
 mod arch;
+mod chunkset_tpl;
 mod compare256_rle;
 pub mod compress;
 pub mod crc32;
@@ -27,6 +28,7 @@ pub mod deflate_slow;
 pub mod deflate_stored;
 mod fallback_builtins;
 mod functable;
+mod inffast_tpl;
 mod inflate;
 mod inflate_p;
 pub mod inftrees;

@@ -60,6 +60,7 @@ changed, then these maximum sizes would be need to be recalculated and
 updated. */
 pub(crate) const ENOUGH_LENS: usize = 1332;
 pub(crate) const ENOUGH_DISTS: usize = 592;
+pub(crate) const ENOUGH: usize = ENOUGH_LENS + ENOUGH_DISTS;
 
 /// Type of code to build for inflate_table()
 #[allow(non_camel_case_types)]

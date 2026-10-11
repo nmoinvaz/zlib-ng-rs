@@ -1296,10 +1296,6 @@ set(ZLIB_SRCS
     inflate.c
 )
 
-set(ZLIB_GENERIC_SRCS
-    arch/generic/chunkset_c.c
-)
-
 if(WITH_ALL_FALLBACKS)
     add_definitions(-DWITH_ALL_FALLBACKS)
 endif()
@@ -1318,7 +1314,7 @@ set(ZLIB_GZFILE_SRCS
     gzwrite.c
 )
 
-set(ZLIB_ALL_SRCS ${ZLIB_GENERIC_SRCS} ${ZLIB_SRCS} ${ZLIB_ARCH_HDRS} ${ZLIB_ARCH_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+set(ZLIB_ALL_SRCS ${ZLIB_SRCS} ${ZLIB_ARCH_HDRS} ${ZLIB_ARCH_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
 if(WITH_GZFILEOP)
     list(APPEND ZLIB_ALL_SRCS ${ZLIB_GZFILE_PRIVATE_HDRS} ${ZLIB_GZFILE_SRCS})
 endif()
@@ -1588,6 +1584,12 @@ endif()
 if(WITH_DFLTCC_DEFLATE)
     list(APPEND RUST_FEATURES s390-dfltcc-deflate)
 endif()
+if(WITH_INFLATE_STRICT)
+    list(APPEND RUST_FEATURES inflate-strict)
+endif()
+if(WITH_INFLATE_ALLOW_INVALID_DIST)
+    list(APPEND RUST_FEATURES inflate-allow-invalid-dist)
+endif()
 if(SIZEOF_Z_OFF_T EQUAL 4)
     list(APPEND RUST_FEATURES z-off-t-32)
 elseif(NOT SIZEOF_Z_OFF_T EQUAL 8)
@@ -1667,6 +1669,34 @@ foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()
 
+# The inflate state, its modes and the build flags that change it
+list(APPEND RUST_LAYOUT_C_CHECKS "sizeof(inflate_allocs)" ENOUGH
+    RUST_LAYOUT_INFLATE_STRICT RUST_LAYOUT_INFLATE_ALLOW_INVALID_DIST INFLATE_FAST_MIN_HAVE INFLATE_FAST_MIN_LEFT
+    INFLATE_FAST_MIN_SAFE MAX_DIST_EXTRA_BITS MAX_LEN_ROOT_BITS)
+list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::inflate::inflate_allocs>()"
+    crate::inftrees::ENOUGH "cfg!(feature = \"inflate-strict\") as usize"
+    "cfg!(feature = \"inflate-allow-invalid-dist\") as usize" crate::inflate_p::INFLATE_FAST_MIN_HAVE
+    crate::inflate_p::INFLATE_FAST_MIN_LEFT crate::inflate_p::INFLATE_FAST_MIN_SAFE
+    "crate::zutil::MAX_DIST_EXTRA_BITS as usize" "crate::zutil::MAX_LEN_ROOT_BITS as usize")
+set(RUST_LAYOUT_INFLATE_FIELDS strm mode last wrap havedict flags was check total head back wbits wsize wbufsize
+    whave wnext window hold bits lenbits lencode distcode distbits length offset extra ncode nlen ndist have next lens
+    work codes alloc_bufs)
+if(WITH_INFLATE_STRICT)
+    list(APPEND RUST_LAYOUT_INFLATE_FIELDS dmax)
+endif()
+if(WITH_INFLATE_ALLOW_INVALID_DIST)
+    list(APPEND RUST_LAYOUT_INFLATE_FIELDS sane)
+endif()
+foreach(FIELD ${RUST_LAYOUT_INFLATE_FIELDS})
+    list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(struct inflate_state, ${FIELD})")
+    list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::inflate::inflate_state, ${FIELD})")
+endforeach()
+foreach(MODE HEAD FLAGS TIME OS EXLEN EXTRA NAME COMMENT HCRC DICTID DICT TYPE TYPEDO STORED COPY_ COPY TABLE LENLENS
+        CODELENS LEN_ LEN LENEXT DIST DISTEXT MATCH LIT CHECK LENGTH DONE BAD SYNC)
+    list(APPEND RUST_LAYOUT_C_CHECKS ${MODE})
+    list(APPEND RUST_LAYOUT_RUST_CHECKS "crate::inflate::${MODE} as usize")
+endforeach()
+
 # The function table only exists with runtime CPU detection.
 if(WITH_RUNTIME_CPU_DETECTION)
     foreach(FIELD force_init adler32 adler32_copy chunkmemset_safe compare256 crc32 crc32_copy inflate_fast
@@ -1679,7 +1709,7 @@ if(WITH_RUNTIME_CPU_DETECTION)
     list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::functable::functable_s>()")
 endif()
 
-set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"inftrees.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"inftrees.h\"\n#include \"inflate.h\"\n#include \"inflate_p.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
 string(APPEND RUST_LAYOUT_PROBE
     "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
     "#ifdef DISABLE_RUNTIME_CPU_DETECTION\n#  define RUST_LAYOUT_RUNTIME 0\n#else\n#  define RUST_LAYOUT_RUNTIME 1\n#endif\n\n"
@@ -1688,6 +1718,9 @@ string(APPEND RUST_LAYOUT_PROBE
     "#  define RUST_LAYOUT_BITS_SENT offsetof(deflate_state, bits_sent)\n"
     "#else\n#  define RUST_LAYOUT_ZLIB_DEBUG 0\n#  define RUST_LAYOUT_COMPRESSED_LEN 0\n"
     "#  define RUST_LAYOUT_BITS_SENT 0\n#endif\n\n"
+    "#ifdef INFLATE_STRICT\n#  define RUST_LAYOUT_INFLATE_STRICT 1\n#else\n#  define RUST_LAYOUT_INFLATE_STRICT 0\n#endif\n\n"
+    "#ifdef INFLATE_ALLOW_INVALID_DISTANCE_TOOFAR_ARRR\n#  define RUST_LAYOUT_INFLATE_ALLOW_INVALID_DIST 1\n"
+    "#else\n#  define RUST_LAYOUT_INFLATE_ALLOW_INVALID_DIST 0\n#endif\n\n"
     "#define DIGIT(n, d) ((char)('0' + ((n) / (d)) % 10))\n"
     "#define LAYOUT(index, value) \\\n"
     "    const char zng_layout_##index[] = {'Z', 'N', 'G', 'L', 'A', 'Y', 'O', 'U', 'T', ':', \\\n"

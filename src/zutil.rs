@@ -86,6 +86,11 @@ pub(crate) const CRC32_INITIAL_VALUE: u32 = 0;
 
 /// All codes must not exceed MAX_BITS bits
 pub(crate) const MAX_BITS: usize = 15;
+/// maximum number of extra distance bits
+pub(crate) const MAX_DIST_EXTRA_BITS: u32 = 13;
+/// maximum number of index bits for the first-level length code table
+/// (the largest value assigned to state->lenbits)
+pub(crate) const MAX_LEN_ROOT_BITS: u32 = 10;
 
 /* The three kinds of block type */
 pub(crate) const STORED_BLOCK: u32 = 0;
