@@ -1295,7 +1295,6 @@ set(ZLIB_SRCS
     infback.c
     inflate.c
     inftrees.c
-    zutil.c
 )
 
 set(ZLIB_GENERIC_SRCS
@@ -1649,7 +1648,7 @@ set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS 
     crate::deflate::MIN_ROLL_LEVEL "const DEFLATE_STATE_LONGEST_MATCH: usize"
     "const DEFLATE_STATE_INSERT_BATCH: usize"
     "const ZLIB_DEBUG: usize" "const DEFLATE_STATE_COMPRESSED_LEN: usize" "const DEFLATE_STATE_BITS_SENT: usize"
-    "const DEFLATE_STATE_SIZE: usize" "const OS_CODE: u8" "(crate::deflate::VERSION_0 - b'0') as usize"
+    "const DEFLATE_STATE_SIZE: usize" "const OS_CODE: u8" "(crate::zutil::VERSION_0 - b'0') as usize"
     "size_of::<crate::deflate::deflate_allocs>()" "size_of::<crate::zlib::gz_header>()"
     "core::mem::offset_of!(crate::zlib::gz_header, comment)" crate::deflate::WINDOW_PAD_SIZE
     crate::deflate::LIT_BUFS "crate::zconf::MAX_WBITS as usize" "crate::zconf::MIN_WBITS as usize"
@@ -1692,6 +1691,13 @@ string(APPEND RUST_LAYOUT_PROBE
     "        DIGIT(index, 100), DIGIT(index, 10), DIGIT(index, 1), '=', \\\n"
     "        DIGIT(value, 10000000), DIGIT(value, 1000000), DIGIT(value, 100000), DIGIT(value, 10000), \\\n"
     "        DIGIT(value, 1000), DIGIT(value, 100), DIGIT(value, 10), DIGIT(value, 1), ';', '\\0'};\n\n")
+# The build flags that zlibCompileFlags reports are only known to the compiler.
+foreach(FLAG ZLIB_WINAPI NO_GZCOMPRESS NO_GZIP PKZIP_BUG_WORKAROUND)
+    string(APPEND RUST_LAYOUT_PROBE
+        "#ifdef ${FLAG}\n#  define RUST_LAYOUT_${FLAG} 1\n#else\n#  define RUST_LAYOUT_${FLAG} 0\n#endif\n\n")
+    list(APPEND RUST_LAYOUT_C_CHECKS RUST_LAYOUT_${FLAG})
+    list(APPEND RUST_LAYOUT_RUST_CHECKS "const ${FLAG}: usize")
+endforeach()
 set(RUST_LAYOUT_INDEX 0)
 set(RUST_LAYOUT_CHECKS "")
 foreach(C_CHECK ${RUST_LAYOUT_C_CHECKS})

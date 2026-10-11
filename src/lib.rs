@@ -40,6 +40,7 @@ pub mod zconf;
 pub mod zlib;
 mod zmemory;
 mod zutil;
+mod zutil_p;
 
 #[cfg(feature = "c-layout")]
 mod c_layout {

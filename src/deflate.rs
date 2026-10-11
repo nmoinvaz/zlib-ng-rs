@@ -80,24 +80,17 @@ use crate::zlib::{
 };
 #[cfg(not(feature = "zlib-compat"))]
 use crate::zlib::{
-    Z_DEFLATE_LEVEL, Z_DEFLATE_REPRODUCIBLE, Z_DEFLATE_STRATEGY, ZLIBNG_VERSION,
-    zng_deflate_param_value,
+    Z_DEFLATE_LEVEL, Z_DEFLATE_REPRODUCIBLE, Z_DEFLATE_STRATEGY, zng_deflate_param_value,
 };
 use crate::zmemory::{zng_memwrite_2, zng_memwrite_4, zng_memwrite_8};
 use crate::zutil::{
     ADLER32_INITIAL_VALUE, CRC32_INITIAL_VALUE, DEF_MEM_LEVEL, GZIP_WRAPLEN, MAX_BITS, PRESET_DICT,
-    STD_MAX_MATCH, STD_MIN_MATCH, ZLIB_WRAPLEN,
+    STD_MAX_MATCH, STD_MIN_MATCH, ZLIB_WRAPLEN, check_ver_stsize, err_return, zcalloc, zcfree,
 };
 #[cfg(not(feature = "no-quick-strategy"))]
 use crate::zutil::{DEFLATE_BLOCK_OVERHEAD, deflate_quick_overhead};
 
 const MIN_MATCH: u32 = STD_MIN_MATCH as u32;
-
-/// The first character of the version that the caller must have been built against
-#[cfg(feature = "zlib-compat")]
-pub(crate) const VERSION_0: u8 = ZLIB_VERSION.to_bytes()[0];
-#[cfg(not(feature = "zlib-compat"))]
-pub(crate) const VERSION_0: u8 = ZLIBNG_VERSION.to_bytes()[0];
 
 /* Stream status */
 /// zlib header -> BUSY_STATE
@@ -787,62 +780,6 @@ pub static deflate_copyright: [u8; COPYRIGHT.len()] = {
     }
     text
 };
-
-unsafe extern "C" {
-    /// indexed by 2-zlib_error
-    #[link_name = prefix!("z_errmsg")]
-    static z_errmsg: [*const c_char; 10];
-    #[link_name = prefix!("zcalloc")]
-    fn zcalloc(opaque: *mut c_void, items: c_uint, size: c_uint) -> *mut c_void;
-    #[link_name = prefix!("zcfree")]
-    fn zcfree(opaque: *mut c_void, ptr: *mut c_void);
-}
-
-/// The error message for an error code, ERR_MSG in C
-#[inline]
-fn err_msg(err: c_int) -> *const c_char {
-    let index = if !(-6..=2).contains(&err) {
-        9
-    } else {
-        (2 - err) as usize
-    };
-    // SAFETY: the index is below 10, and the C sources never write the table.
-    unsafe {
-        (&raw const z_errmsg)
-            .cast::<*const c_char>()
-            .add(index)
-            .read()
-    }
-}
-
-/// Sets the message of the stream and hands back the error, ERR_RETURN in C. To be used only
-/// when the state is known to be valid.
-///
-/// # Safety
-///
-/// `strm` must be valid for writes.
-#[inline]
-unsafe fn err_return(strm: *mut z_stream, err: c_int) -> c_int {
-    // SAFETY: the caller guarantees strm is valid.
-    unsafe { (*strm).msg = err_msg(err) };
-    err
-}
-
-/// Whether the caller was built against another library version or another z_stream,
-/// CHECK_VER_STSIZE in C
-///
-/// # Safety
-///
-/// `version` must be null or point to at least one byte.
-#[inline]
-unsafe fn check_ver_stsize(version: *const c_char, stream_size: i32) -> bool {
-    // SAFETY: the caller guarantees version is null or readable.
-    unsafe {
-        version.is_null()
-            || *version != VERSION_0 as c_char
-            || stream_size != size_of::<z_stream>() as i32
-    }
-}
 
 /* ===========================================================================
  * Local data

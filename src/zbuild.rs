@@ -67,6 +67,21 @@ macro_rules! prefix {
 }
 pub(crate) use prefix;
 
+/// Name of a symbol that carries a prefix in both APIs, PREFIX3 in C
+#[cfg(feature = "zlib-compat")]
+macro_rules! prefix3 {
+    ($name:literal) => {
+        concat!("z_", $name)
+    };
+}
+#[cfg(not(feature = "zlib-compat"))]
+macro_rules! prefix3 {
+    ($name:literal) => {
+        concat!("zng_", $name)
+    };
+}
+pub(crate) use prefix3;
+
 /// In zlib-compat the checksums use unsigned long, but zlib-ng use uint32_t
 #[cfg(feature = "zlib-compat")]
 #[allow(non_camel_case_types)]
