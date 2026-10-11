@@ -41,6 +41,11 @@ pub type alloc_func =
     Option<unsafe extern "C" fn(opaque: *mut c_void, items: c_uint, size: c_uint) -> *mut c_void>;
 pub type free_func = Option<unsafe extern "C" fn(opaque: *mut c_void, address: *mut c_void)>;
 
+/// The input callback of inflateBack, which hands out the next piece of input
+pub type in_func = Option<unsafe extern "C" fn(desc: *mut c_void, buf: *mut *const u8) -> u32>;
+/// The output callback of inflateBack, which takes the window
+pub type out_func = Option<unsafe extern "C" fn(desc: *mut c_void, buf: *mut u8, len: u32) -> i32>;
+
 /// gzip header information passed to and from zlib routines.  See RFC 1952
 /// for more details on the meanings of these fields.
 #[allow(non_camel_case_types)]

@@ -1292,7 +1292,6 @@ set(ZLIB_PRIVATE_HDRS
 )
 set(ZLIB_SRCS
     functable.c
-    infback.c
 )
 
 if(WITH_ALL_FALLBACKS)
