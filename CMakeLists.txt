@@ -1404,6 +1404,21 @@ else()
     set(ZLIB_INSTALL_LIBRARIES zlib-ng)
 endif()
 
+# A shared library hides its internal functions, so the tools and tests that call them link a
+# static build of the library.
+if(NOT DEFINED BUILD_SHARED_LIBS)
+    set(ZLIB_INTERNAL_LIBRARY zlib-ng-static)
+elseif(BUILD_SHARED_LIBS)
+    add_library(zlib-ng-internal STATIC EXCLUDE_FROM_ALL ${ZLIB_ALL_SRCS})
+    set(ZLIB_INTERNAL_LIBRARY zlib-ng-internal)
+else()
+    set(ZLIB_INTERNAL_LIBRARY zlib-ng)
+endif()
+set(ZLIB_BUILD_LIBRARIES ${ZLIB_INSTALL_LIBRARIES})
+if(TARGET zlib-ng-internal)
+    list(APPEND ZLIB_BUILD_LIBRARIES zlib-ng-internal)
+endif()
+
 # INFO: Mimics official zlib CMake target
 # Generates ZLIB.cmake in case ZLIB_COMPAT=ON and always exports the CMake target ZLIB::ZLIB
 # In case ZLIB_COMPAT=OFF, the CMake target and file follows zlib-ng naming convention
@@ -1428,16 +1443,16 @@ if (ZLIB_ALIASES)
     endif()
 endif()
 
-foreach(ZLIB_INSTALL_LIBRARY ${ZLIB_INSTALL_LIBRARIES})
+foreach(ZLIB_BUILD_LIBRARY ${ZLIB_BUILD_LIBRARIES})
     if(NOT ZLIB_COMPAT)
-        target_compile_definitions(${ZLIB_INSTALL_LIBRARY} PUBLIC ZLIBNG_NATIVE_API)
+        target_compile_definitions(${ZLIB_BUILD_LIBRARY} PUBLIC ZLIBNG_NATIVE_API)
     endif()
-    target_include_directories(${ZLIB_INSTALL_LIBRARY} PUBLIC
+    target_include_directories(${ZLIB_BUILD_LIBRARY} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}$<SEMICOLON>${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-    target_sources(${ZLIB_INSTALL_LIBRARY} PRIVATE ${RUST_OBJECT})
-    add_dependencies(${ZLIB_INSTALL_LIBRARY} zlib-ng-cargo)
-    target_link_libraries(${ZLIB_INSTALL_LIBRARY} PRIVATE zlib-ng-rust)
+    target_sources(${ZLIB_BUILD_LIBRARY} PRIVATE ${RUST_OBJECT})
+    add_dependencies(${ZLIB_BUILD_LIBRARY} zlib-ng-cargo)
+    target_link_libraries(${ZLIB_BUILD_LIBRARY} PRIVATE zlib-ng-rust)
 endforeach()
 
 if(WIN32)

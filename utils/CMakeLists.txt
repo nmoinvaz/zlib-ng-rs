@@ -35,13 +35,15 @@ endif()
 set(MINIDEFLATE_COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:minideflate> PARENT_SCOPE)
 
 # makefixed
-add_executable(makefixed makefixed.c ${PROJECT_SOURCE_DIR}/inftrees.c ${PROJECT_SOURCE_DIR}/zutil.c)
+add_executable(makefixed makefixed.c)
 configure_util_executable(makefixed)
+target_link_libraries(makefixed ${ZLIB_INTERNAL_LIBRARY})
 set(MAKEFIXED_COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:makefixed> PARENT_SCOPE)
 
 # maketrees
-add_executable(maketrees maketrees.c ${PROJECT_SOURCE_DIR}/zutil.c)
+add_executable(maketrees maketrees.c)
 configure_util_executable(maketrees)
+target_link_libraries(maketrees ${ZLIB_INTERNAL_LIBRARY})
 set(MAKETREES_COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:maketrees> PARENT_SCOPE)
 
 # makecrct
