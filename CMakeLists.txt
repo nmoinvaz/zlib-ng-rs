@@ -1294,7 +1294,6 @@ set(ZLIB_SRCS
     functable.c
     infback.c
     inflate.c
-    inftrees.c
 )
 
 set(ZLIB_GENERIC_SRCS
@@ -1654,6 +1653,10 @@ set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS 
     crate::deflate::LIT_BUFS "crate::zconf::MAX_WBITS as usize" "crate::zconf::MIN_WBITS as usize"
     "crate::zconf::MAX_MEM_LEVEL as usize" "crate::zutil::DEF_MEM_LEVEL as usize"
     "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
+list(APPEND RUST_LAYOUT_C_CHECKS "sizeof(code)" "offsetof(code, val)" ENOUGH_LENS ENOUGH_DISTS CODES LENS DISTS)
+list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::inftrees::code>()"
+    "core::mem::offset_of!(crate::inftrees::code, val)" crate::inftrees::ENOUGH_LENS crate::inftrees::ENOUGH_DISTS
+    "crate::inftrees::CODES as usize" "crate::inftrees::LENS as usize" "crate::inftrees::DISTS as usize")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
         ins_h match_length match_available prev_match match_start prev_length max_chain_length max_lazy_match
@@ -1676,7 +1679,7 @@ if(WITH_RUNTIME_CPU_DETECTION)
     list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::functable::functable_s>()")
 endif()
 
-set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"inftrees.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
 string(APPEND RUST_LAYOUT_PROBE
     "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
     "#ifdef DISABLE_RUNTIME_CPU_DETECTION\n#  define RUST_LAYOUT_RUNTIME 0\n#else\n#  define RUST_LAYOUT_RUNTIME 1\n#endif\n\n"

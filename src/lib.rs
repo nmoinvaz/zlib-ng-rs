@@ -28,6 +28,8 @@ pub mod deflate_stored;
 mod fallback_builtins;
 mod functable;
 mod inflate;
+mod inflate_p;
+pub mod inftrees;
 pub mod insert_string;
 mod insert_string_p;
 mod match_tpl;
