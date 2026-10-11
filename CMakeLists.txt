@@ -1293,7 +1293,6 @@ set(ZLIB_PRIVATE_HDRS
 set(ZLIB_SRCS
     functable.c
     infback.c
-    inflate.c
 )
 
 if(WITH_ALL_FALLBACKS)
@@ -1584,6 +1583,9 @@ endif()
 if(WITH_DFLTCC_DEFLATE)
     list(APPEND RUST_FEATURES s390-dfltcc-deflate)
 endif()
+if(WITH_DFLTCC_INFLATE)
+    list(APPEND RUST_FEATURES s390-dfltcc-inflate)
+endif()
 if(WITH_INFLATE_STRICT)
     list(APPEND RUST_FEATURES inflate-strict)
 endif()
@@ -1638,7 +1640,7 @@ set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MI
     MIN_ROLL_LEVEL "offsetof(deflate_state, longest_match)" "offsetof(deflate_state, insert_batch)"
     RUST_LAYOUT_ZLIB_DEBUG RUST_LAYOUT_COMPRESSED_LEN RUST_LAYOUT_BITS_SENT
     "sizeof(deflate_state)" OS_CODE "PREFIX2(VER_MAJOR)" "sizeof(deflate_allocs)" "sizeof(PREFIX(gz_header))"
-    "offsetof(PREFIX(gz_header), comment)" WINDOW_PAD_SIZE LIT_BUFS MAX_WBITS MIN_WBITS MAX_MEM_LEVEL DEF_MEM_LEVEL
+    "offsetof(PREFIX(gz_header), comment)" RUST_LAYOUT_DEFLATE_WINDOW_PAD_SIZE LIT_BUFS MAX_WBITS MIN_WBITS MAX_MEM_LEVEL DEF_MEM_LEVEL
     "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
@@ -1670,10 +1672,11 @@ foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex
 endforeach()
 
 # The inflate state, its modes and the build flags that change it
-list(APPEND RUST_LAYOUT_C_CHECKS "sizeof(inflate_allocs)" ENOUGH
+list(APPEND RUST_LAYOUT_C_CHECKS "sizeof(struct inflate_state)" WINDOW_PAD_SIZE "sizeof(inflate_allocs)" ENOUGH
     RUST_LAYOUT_INFLATE_STRICT RUST_LAYOUT_INFLATE_ALLOW_INVALID_DIST INFLATE_FAST_MIN_HAVE INFLATE_FAST_MIN_LEFT
     INFLATE_FAST_MIN_SAFE MAX_DIST_EXTRA_BITS MAX_LEN_ROOT_BITS)
-list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::inflate::inflate_allocs>()"
+list(APPEND RUST_LAYOUT_RUST_CHECKS "const INFLATE_STATE_SIZE: usize" crate::inflate::WINDOW_PAD_SIZE
+    "size_of::<crate::inflate::inflate_allocs>()"
     crate::inftrees::ENOUGH "cfg!(feature = \"inflate-strict\") as usize"
     "cfg!(feature = \"inflate-allow-invalid-dist\") as usize" crate::inflate_p::INFLATE_FAST_MIN_HAVE
     crate::inflate_p::INFLATE_FAST_MIN_LEFT crate::inflate_p::INFLATE_FAST_MIN_SAFE
@@ -1709,7 +1712,11 @@ if(WITH_RUNTIME_CPU_DETECTION)
     list(APPEND RUST_LAYOUT_RUST_CHECKS "size_of::<crate::functable::functable_s>()")
 endif()
 
-set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n#include \"trees.h\"\n#include \"inftrees.h\"\n#include \"inflate.h\"\n#include \"inflate_p.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
+# deflate.h and inflate_p.h each define the window padding, which differs when only one of them uses DFLTCC.
+set(RUST_LAYOUT_PROBE "#include \"zbuild.h\"\n#include \"deflate.h\"\n")
+string(APPEND RUST_LAYOUT_PROBE "enum { RUST_LAYOUT_DEFLATE_WINDOW_PAD_SIZE = WINDOW_PAD_SIZE };\n"
+    "#undef PAD_WINDOW\n#undef WINDOW_PAD_SIZE\n#undef HINT_ALIGNED_WINDOW\n")
+string(APPEND RUST_LAYOUT_PROBE "#include \"trees.h\"\n#include \"inftrees.h\"\n#include \"inflate.h\"\n#include \"inflate_p.h\"\n#include \"functable.h\"\n#include <stddef.h>\n\n")
 string(APPEND RUST_LAYOUT_PROBE
     "#ifdef LIT_MEM\n#  define RUST_LAYOUT_LIT_MEM 1\n#else\n#  define RUST_LAYOUT_LIT_MEM 0\n#endif\n\n"
     "#ifdef DISABLE_RUNTIME_CPU_DETECTION\n#  define RUST_LAYOUT_RUNTIME 0\n#else\n#  define RUST_LAYOUT_RUNTIME 1\n#endif\n\n"

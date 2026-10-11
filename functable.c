@@ -610,6 +610,10 @@ Z_INTERNAL uint32_t functable_adler32_copy(uint32_t adler, uint8_t *dst, const u
     return FUNCTABLE_CALL(adler32_copy)(adler, dst, src, len);
 }
 
+Z_INTERNAL uint8_t* functable_chunkmemset_safe(uint8_t *out, uint8_t *from, size_t len, size_t left) {
+    return FUNCTABLE_CALL(chunkmemset_safe)(out, from, len, left);
+}
+
 Z_INTERNAL uint32_t functable_compare256(const uint8_t *src0, const uint8_t *src1) {
     return FUNCTABLE_CALL(compare256)(src0, src1);
 }
@@ -620,6 +624,14 @@ Z_INTERNAL uint32_t functable_crc32(uint32_t crc, const uint8_t *buf, size_t len
 
 Z_INTERNAL uint32_t functable_crc32_copy(uint32_t crc, uint8_t *dst, const uint8_t *src, size_t len) {
     return FUNCTABLE_CALL(crc32_copy)(crc, dst, src, len);
+}
+
+Z_INTERNAL void functable_inflate_fast(PREFIX3(stream) *strm, uint32_t start) {
+    FUNCTABLE_CALL(inflate_fast)(strm, start);
+}
+
+Z_INTERNAL void functable_inflate_fast_safe(PREFIX3(stream) *strm, uint32_t start) {
+    FUNCTABLE_CALL(inflate_fast_safe)(strm, start);
 }
 
 Z_INTERNAL uint32_t functable_longest_match(deflate_state *const s, uint32_t cur_match) {

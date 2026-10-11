@@ -68,7 +68,7 @@ use crate::insert_string_p::{insert_knuth, insert_knuth_head, update_hash_roll};
 use crate::trees::{
     static_tree_desc, zng_tr_align, zng_tr_flush_bits, zng_tr_init, zng_tr_stored_block,
 };
-use crate::zbuild::{prefix, unlikely, z_checksum_t};
+use crate::zbuild::{pad_16, pad_64, padsz, prefix, unlikely, z_checksum_t};
 use crate::zconf::{MAX_MEM_LEVEL, MAX_WBITS, MIN_WBITS};
 #[cfg(feature = "zlib-compat")]
 use crate::zlib::ZLIB_VERSION;
@@ -914,22 +914,6 @@ const PENDING_BUF_PAD: usize = 8;
 #[inline(always)]
 const fn pending_buf_bytes(lit_bufsize: usize) -> usize {
     (lit_bufsize * LIT_BUFS) + 1 + PENDING_BUF_PAD
-}
-
-/// The padding that brings a position to a multiple of pad, PADSZ in C
-#[inline(always)]
-const fn padsz(bpos: usize, pad: usize) -> usize {
-    (pad - (bpos % pad)) % pad
-}
-
-#[inline(always)]
-const fn pad_16(bpos: usize) -> usize {
-    bpos + padsz(bpos, 16)
-}
-
-#[inline(always)]
-const fn pad_64(bpos: usize) -> usize {
-    bpos + padsz(bpos, 64)
 }
 
 #[inline(always)]

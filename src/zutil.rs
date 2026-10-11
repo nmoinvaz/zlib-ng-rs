@@ -78,6 +78,8 @@ const _: () = assert!(
     MAX_WBITS >= 9 && MAX_WBITS <= 15,
     "MAX_WBITS must be in 9..15"
 );
+/// default windowBits for decompression. MAX_WBITS is for compression only
+pub(crate) const DEF_WBITS: i32 = MAX_WBITS;
 
 /// initial adler-32 hash value
 pub(crate) const ADLER32_INITIAL_VALUE: u32 = 1;

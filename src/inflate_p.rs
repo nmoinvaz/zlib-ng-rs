@@ -4,6 +4,7 @@ use core::ffi::CStr;
 use core::ptr;
 
 use crate::inflate::{BAD, inflate_state};
+use crate::inftrees::code;
 use crate::zlib::z_stream;
 use crate::zmemory::zng_memread_8;
 
@@ -14,6 +15,26 @@ use crate::zmemory::zng_memread_8;
  *
  * For literals (op == 0): bits = code_bits, val = literal byte
  */
+
+/* Extract code size from a Huffman table entry */
+#[inline(always)]
+pub(crate) fn code_bits(here: code) -> u32 {
+    if here.op & 16 != 0 {
+        u32::from(here.op & 15)
+    } else {
+        u32::from(here.bits)
+    }
+}
+
+/* Extract extra bits count from a length/distance code entry */
+#[inline(always)]
+pub(crate) fn code_extra(here: code) -> u32 {
+    if here.op & 16 != 0 {
+        u32::from(here.bits).wrapping_sub(u32::from(here.op & 15))
+    } else {
+        0
+    }
+}
 
 /* Build combined op field: preserves extra if not len/dist, else combines with code_bits */
 #[inline(always)]

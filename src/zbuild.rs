@@ -10,6 +10,24 @@ pub(crate) fn align_down(value: usize, align: usize) -> usize {
     value & !(align - 1)
 }
 
+/* PADSZ returns needed bytes to pad bpos to pad size
+ * PAD_NN calculates pad size and adds it to bpos, returning the result.
+ */
+#[inline(always)]
+pub(crate) const fn padsz(bpos: usize, pad: usize) -> usize {
+    (pad - (bpos % pad)) % pad
+}
+
+#[inline(always)]
+pub(crate) const fn pad_16(bpos: usize) -> usize {
+    bpos + padsz(bpos, 16)
+}
+
+#[inline(always)]
+pub(crate) const fn pad_64(bpos: usize) -> usize {
+    bpos + padsz(bpos, 64)
+}
+
 /* OPTIMAL_CMP values determine the comparison width:
  * 64: Best for 64-bit architectures with unaligned access
  * 32: Best for 32-bit architectures with unaligned access

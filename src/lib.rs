@@ -29,6 +29,7 @@ pub mod deflate_stored;
 mod fallback_builtins;
 mod functable;
 mod inffast_tpl;
+mod inffixed_tbl;
 mod inflate;
 mod inflate_p;
 pub mod inftrees;

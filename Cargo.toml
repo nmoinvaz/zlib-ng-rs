@@ -21,6 +21,8 @@ zlib-compat = []
 no-quick-strategy = []
 # Deflate with DFLTCC on IBM Z.
 s390-dfltcc-deflate = []
+# Inflate with DFLTCC on IBM Z.
+s390-dfltcc-inflate = []
 # Reject distances beyond the window size of the zlib header, INFLATE_STRICT in the C sources.
 inflate-strict = []
 # Fill with zeros for distances that are too far back when inflateUndermine asks for it.

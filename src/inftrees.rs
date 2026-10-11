@@ -264,6 +264,8 @@ const _: () = assert!(size_of::<code>() == 4, "code entry must be exactly 4 byte
 /// for as many values. `table` must point to space for the tables, which is ENOUGH_LENS entries
 /// for LENS, ENOUGH_DISTS for DISTS and two to the power of `bits` for CODES. `bits` must be
 /// valid for reads and writes.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_inflate_table(
     r#type: codetype,

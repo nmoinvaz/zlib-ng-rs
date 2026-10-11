@@ -10,7 +10,6 @@
 use core::ffi::c_int;
 
 use crate::deflate::deflate_state;
-#[cfg(feature = "runtime-cpu-detection")]
 use crate::zlib::z_stream;
 
 /// Whether the function table exists, the opposite of DISABLE_RUNTIME_CPU_DETECTION in C
@@ -59,9 +58,12 @@ unsafe extern "C" {
         unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32;
     fn functable_adler32(adler: u32, buf: *const u8, len: usize) -> u32;
     fn functable_adler32_copy(adler: u32, dst: *mut u8, src: *const u8, len: usize) -> u32;
+    fn functable_chunkmemset_safe(out: *mut u8, from: *mut u8, len: usize, left: usize) -> *mut u8;
     fn functable_compare256(src0: *const u8, src1: *const u8) -> u32;
     fn functable_crc32(crc: u32, buf: *const u8, len: usize) -> u32;
     fn functable_crc32_copy(crc: u32, dst: *mut u8, src: *const u8, len: usize) -> u32;
+    fn functable_inflate_fast(strm: *mut z_stream, start: u32);
+    fn functable_inflate_fast_safe(strm: *mut z_stream, start: u32);
     fn functable_longest_match(s: *mut deflate_state, cur_match: u32) -> u32;
 }
 
@@ -97,6 +99,13 @@ functable_call!(
 functable_call!(
     /// # Safety
     ///
+    /// `out` must be valid for writes of `left` bytes, and `from` for reads of the bytes that are
+    /// copied, which may be bytes that this copy writes.
+    chunkmemset_safe, functable_chunkmemset_safe, (out: *mut u8, from: *mut u8, len: usize, left: usize) -> *mut u8
+);
+functable_call!(
+    /// # Safety
+    ///
     /// `src0` and `src1` must be valid for reads of 256 bytes.
     compare256, functable_compare256, (src0: *const u8, src1: *const u8) -> u32
 );
@@ -111,6 +120,19 @@ functable_call!(
     ///
     /// `src` must be valid for reads and `dst` for writes of `len` bytes.
     crc32_copy, functable_crc32_copy, (crc: u32, dst: *mut u8, src: *const u8, len: usize) -> u32
+);
+functable_call!(
+    /// # Safety
+    ///
+    /// `strm` must be a valid inflate stream that upholds the entry assumptions of inflate_fast.
+    inflate_fast, functable_inflate_fast, (strm: *mut z_stream, start: u32) -> ()
+);
+functable_call!(
+    /// # Safety
+    ///
+    /// `strm` must be a valid inflate stream that upholds the entry assumptions of inflate_fast
+    /// in its safe mode.
+    inflate_fast_safe, functable_inflate_fast_safe, (strm: *mut z_stream, start: u32) -> ()
 );
 functable_call!(
     /// # Safety

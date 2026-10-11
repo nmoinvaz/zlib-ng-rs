@@ -1,3 +1,3 @@
 pub(crate) mod generic;
-#[cfg(feature = "s390-dfltcc-deflate")]
+#[cfg(any(feature = "s390-dfltcc-deflate", feature = "s390-dfltcc-inflate"))]
 pub(crate) mod s390;
