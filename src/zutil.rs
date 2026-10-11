@@ -9,6 +9,8 @@
 
 #![cfg_attr(feature = "no-quick-strategy", allow(dead_code))]
 
+use crate::zconf::MAX_MEM_LEVEL;
+
 /// initial adler-32 hash value
 pub(crate) const ADLER32_INITIAL_VALUE: u32 = 1;
 /// initial crc-32 hash value
@@ -21,6 +23,15 @@ pub(crate) const MAX_BITS: usize = 15;
 pub(crate) const STORED_BLOCK: u32 = 0;
 pub(crate) const STATIC_TREES: u32 = 1;
 pub(crate) const DYN_TREES: u32 = 2;
+
+/// preset dictionary flag in zlib header
+pub(crate) const PRESET_DICT: u32 = 0x20;
+
+/// gzip format overhead
+pub(crate) const GZIP_WRAPLEN: usize = 18;
+
+/// default memLevel
+pub(crate) const DEF_MEM_LEVEL: i32 = if MAX_MEM_LEVEL >= 8 { 8 } else { MAX_MEM_LEVEL };
 
 /// The minimum match length mandated by the deflate standard
 pub(crate) const STD_MIN_MATCH: usize = 3;

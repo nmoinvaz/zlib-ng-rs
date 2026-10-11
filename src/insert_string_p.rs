@@ -58,6 +58,28 @@ pub(crate) unsafe fn insert_knuth_val(s: *mut deflate_state, str: u32, val: u32)
     }
 }
 
+/// Like insert_knuth, but leaves the prev link untouched. Used for deflate_quick, which only
+/// inspects the chain head.
+///
+/// # Safety
+///
+/// `s` must point to a deflate_state with a valid head table, and `window` must be valid for
+/// reads of `str + 4` bytes.
+#[inline(always)]
+pub(crate) unsafe fn insert_knuth_head(s: *mut deflate_state, window: *mut u8, str: u32) -> u32 {
+    // SAFETY: the caller guarantees the state, its head table and the window bytes are valid. The
+    // hash is below HASH_SIZE.
+    unsafe {
+        let val = u32::from_le(zng_memread_4(window.add(str as usize)));
+        let h = update_hash_knuth(val);
+
+        let slot = (*s).head.add(h as usize);
+        let head = u32::from(*slot);
+        *slot = str as Pos;
+        head
+    }
+}
+
 /* ===========================================================================
  * Insert string str using a pre-read value, returning the previous head of the
  * hash chain. The prev link is left untouched since deflate_quick only inspects

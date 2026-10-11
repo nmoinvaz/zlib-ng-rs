@@ -158,6 +158,8 @@ pub(crate) unsafe fn d_code(dist: u32) -> u8 {
 /// # Safety
 ///
 /// `s` must point to a deflate_state.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_tr_init(s: *mut deflate_state) {
     // SAFETY: the caller guarantees the state is valid.
@@ -849,6 +851,8 @@ unsafe fn send_all_trees(s: *mut deflate_state, lcodes: c_int, dcodes: c_int, bl
 ///
 /// `s` must point to a deflate_state whose pending buffer has room for the block, and `buf` must
 /// be valid for reads of `stored_len` bytes.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_tr_stored_block(
     s: *mut deflate_state,
@@ -889,6 +893,8 @@ pub unsafe extern "C" fn zng_tr_stored_block(
 /// # Safety
 ///
 /// `s` must point to a deflate_state whose pending buffer has room for 16 more bytes.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_tr_align(s: *mut deflate_state) {
     // SAFETY: the caller guarantees the state is valid and the pending buffer has room.
@@ -907,6 +913,8 @@ pub unsafe extern "C" fn zng_tr_align(s: *mut deflate_state) {
 ///
 /// `s` must point to a deflate_state with a valid stream behind it, whose pending buffer has room
 /// for the block. `buf` must be null or valid for reads of `stored_len` bytes.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_tr_flush_block(
     s: *mut deflate_state,
@@ -1196,6 +1204,8 @@ unsafe fn detect_data_type(s: *mut deflate_state) -> c_int {
 /// # Safety
 ///
 /// `s` must point to a deflate_state whose pending buffer has room for 8 more bytes.
+// Kept out of line, as it is across the C source files.
+#[inline(never)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn zng_tr_flush_bits(s: *mut deflate_state) {
     // SAFETY: the caller guarantees the state is valid and the pending buffer has room.

@@ -11,7 +11,7 @@ use core::ptr;
 use crate::arch::s390::dfltcc_deflate::deflate_need_checksum;
 use crate::deflate::{D_CODES, LITERALS, deflate_state, flush_pending, max_dist};
 use crate::functable;
-use crate::trees::{d_code, zng_length_code, zng_tr_flush_block};
+use crate::trees::{d_code, zng_length_code, zng_tr_flush_bits, zng_tr_flush_block};
 #[cfg(not(feature = "lit-mem"))]
 use crate::zbuild::OPTIMAL_CMP;
 use crate::zbuild::{z_checksum_t, z_uintmax_t};
@@ -146,6 +146,40 @@ pub(crate) unsafe fn check_match(
     _match_pos: u32,
     _length: u32,
 ) {
+}
+
+/* =========================================================================
+ * Flush as much pending output as possible. All deflate() output, except for some
+ * deflate_stored() output, goes through this function so some applications may wish to
+ * modify it to avoid allocating a large strm->next_out buffer and copying into it.
+ * See also read_buf().
+ */
+/// # Safety
+///
+/// `strm` must be a valid deflate stream.
+#[inline(always)]
+pub(crate) unsafe fn flush_pending_inline(strm: *mut z_stream) {
+    // SAFETY: the caller guarantees the stream is valid. The pending buffer holds pending bytes
+    // at pending_out, and next_out has room for avail_out bytes.
+    unsafe {
+        let s = (*strm).state.cast::<deflate_state>();
+
+        zng_tr_flush_bits(s);
+        let len = (*s).pending.min((*strm).avail_out);
+        if len == 0 {
+            return;
+        }
+
+        ptr::copy_nonoverlapping((*s).pending_out, (*strm).next_out, len as usize);
+        (*strm).next_out = (*strm).next_out.add(len as usize);
+        (*s).pending_out = (*s).pending_out.add(len as usize);
+        (*strm).total_out = (*strm).total_out.wrapping_add(len as z_uintmax_t);
+        (*strm).avail_out -= len;
+        (*s).pending -= len;
+        if (*s).pending == 0 {
+            (*s).pending_out = (*s).pending_buf;
+        }
+    }
 }
 
 /* ===========================================================================

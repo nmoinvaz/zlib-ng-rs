@@ -27,7 +27,6 @@
 
 #![allow(non_camel_case_types)]
 
-#[cfg(feature = "zlib-compat")]
 use core::ffi::CStr;
 use core::ffi::{c_char, c_int, c_uint, c_ulong, c_void};
 
@@ -35,10 +34,45 @@ use crate::zbuild::{z_checksum_t, z_uintmax_t};
 
 #[cfg(feature = "zlib-compat")]
 pub const ZLIB_VERSION: &CStr = c"1.3.2.zlib-ng";
+#[cfg(not(feature = "zlib-compat"))]
+pub const ZLIBNG_VERSION: &CStr = c"2.3.90";
 
 pub type alloc_func =
     Option<unsafe extern "C" fn(opaque: *mut c_void, items: c_uint, size: c_uint) -> *mut c_void>;
 pub type free_func = Option<unsafe extern "C" fn(opaque: *mut c_void, address: *mut c_void)>;
+
+/// gzip header information passed to and from zlib routines.  See RFC 1952
+/// for more details on the meanings of these fields.
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct gz_header {
+    /// true if compressed data believed to be text
+    pub text: i32,
+    /// modification time
+    pub time: c_ulong,
+    /// extra flags (not used when writing a gzip file)
+    pub xflags: i32,
+    /// operating system
+    pub os: i32,
+    /// pointer to extra field or NULL if none
+    pub extra: *mut u8,
+    /// extra field length (valid if extra != NULL)
+    pub extra_len: u32,
+    /// space at extra (only when reading header)
+    pub extra_max: u32,
+    /// pointer to zero-terminated file name or NULL
+    pub name: *mut u8,
+    /// space at name (only when reading header)
+    pub name_max: u32,
+    /// pointer to zero-terminated comment or NULL
+    pub comment: *mut u8,
+    /// space at comment (only when reading header)
+    pub comm_max: u32,
+    /// true if there was or will be a header crc
+    pub hcrc: i32,
+    /// true when done reading gzip header (not used when writing a gzip file)
+    pub done: i32,
+}
 
 /// not visible by applications
 #[repr(C)]
@@ -120,9 +154,36 @@ pub const Z_FIXED: i32 = 4;
 pub const Z_DEFAULT_STRATEGY: i32 = 0;
 /* compression strategy; see deflateInit2() below for details */
 
+/// The deflate compression method (the only one supported in this version)
+pub const Z_DEFLATED: i32 = 8;
+
 pub const Z_BINARY: i32 = 0;
 pub const Z_TEXT: i32 = 1;
 /// for compatibility with 1.2.2 and earlier
 pub const Z_ASCII: i32 = Z_TEXT;
 pub const Z_UNKNOWN: i32 = 2;
 /* Possible values of the data_type field for deflate() */
+
+/// compression level, represented as an int
+#[cfg(not(feature = "zlib-compat"))]
+pub const Z_DEFLATE_LEVEL: c_int = 0;
+/// compression strategy, represented as an int
+#[cfg(not(feature = "zlib-compat"))]
+pub const Z_DEFLATE_STRATEGY: c_int = 1;
+/// whether reproducible compression results are required, represented as an int
+#[cfg(not(feature = "zlib-compat"))]
+pub const Z_DEFLATE_REPRODUCIBLE: c_int = 2;
+
+#[cfg(not(feature = "zlib-compat"))]
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct zng_deflate_param_value {
+    /// parameter ID
+    pub param: c_int,
+    /// parameter value
+    pub buf: *mut c_void,
+    /// parameter value size
+    pub size: usize,
+    /// result of the last set/get call
+    pub status: i32,
+}

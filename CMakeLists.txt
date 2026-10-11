@@ -1291,7 +1291,6 @@ set(ZLIB_PRIVATE_HDRS
     zutil_p.h
 )
 set(ZLIB_SRCS
-    deflate.c
     functable.c
     infback.c
     inflate.c
@@ -1623,6 +1622,8 @@ set(RUST_LAYOUT_C_CHECKS HASH_SIZE HASH_BITS STD_MIN_MATCH STD_MAX_MATCH WANT_MI
     RUST_LAYOUT_LIT_MEM RUST_LAYOUT_RUNTIME LITERALS L_CODES D_CODES BL_CODES HEAP_SIZE MAX_BITS DIST_CODE_LEN
     MIN_ROLL_LEVEL "offsetof(deflate_state, longest_match)" "offsetof(deflate_state, insert_batch)"
     RUST_LAYOUT_ZLIB_DEBUG RUST_LAYOUT_COMPRESSED_LEN RUST_LAYOUT_BITS_SENT
+    "sizeof(deflate_state)" OS_CODE "PREFIX2(VER_MAJOR)" "sizeof(deflate_allocs)" "sizeof(PREFIX(gz_header))"
+    "offsetof(PREFIX(gz_header), comment)" WINDOW_PAD_SIZE LIT_BUFS MAX_WBITS MIN_WBITS MAX_MEM_LEVEL DEF_MEM_LEVEL
     "sizeof(ct_data)" "sizeof(tree_desc)")
 set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS crate::zutil::STD_MIN_MATCH
     crate::zutil::STD_MAX_MATCH crate::zutil::WANT_MIN_MATCH crate::deflate::MIN_LOOKAHEAD
@@ -1633,13 +1634,18 @@ set(RUST_LAYOUT_RUST_CHECKS crate::deflate::HASH_SIZE crate::deflate::HASH_BITS 
     crate::deflate::MIN_ROLL_LEVEL "const DEFLATE_STATE_LONGEST_MATCH: usize"
     "const DEFLATE_STATE_INSERT_BATCH: usize"
     "const ZLIB_DEBUG: usize" "const DEFLATE_STATE_COMPRESSED_LEN: usize" "const DEFLATE_STATE_BITS_SENT: usize"
+    "const DEFLATE_STATE_SIZE: usize" "const OS_CODE: u8" "(crate::deflate::VERSION_0 - b'0') as usize"
+    "size_of::<crate::deflate::deflate_allocs>()" "size_of::<crate::zlib::gz_header>()"
+    "core::mem::offset_of!(crate::zlib::gz_header, comment)" crate::deflate::WINDOW_PAD_SIZE
+    crate::deflate::LIT_BUFS "crate::zconf::MAX_WBITS as usize" "crate::zconf::MIN_WBITS as usize"
+    "crate::zconf::MAX_MEM_LEVEL as usize" "crate::zutil::DEF_MEM_LEVEL as usize"
     "size_of::<crate::deflate::ct_data>()" "size_of::<crate::deflate::tree_desc>()")
 foreach(FIELD strm pending_buf pending_out pending_buf_size pending wrap gzindex gzhead status last_flush
         reproducible block_open lookahead strstart w_size block_start high_water window_size window prev head
         ins_h match_length match_available prev_match match_start prev_length max_chain_length max_lazy_match
         level strategy good_match nice_match insert bi_used bi_buf bi_valid lit_bufsize
         ${RUST_LAYOUT_SYM_FIELDS} sym_next sym_end opt_len static_len l_desc d_desc bl_desc bl_count pq_leaves
-        pq_scratch dyn_ltree dyn_dtree bl_tree)
+        pq_scratch dyn_ltree dyn_dtree bl_tree alloc_bufs)
     list(APPEND RUST_LAYOUT_C_CHECKS "offsetof(deflate_state, ${FIELD})")
     list(APPEND RUST_LAYOUT_RUST_CHECKS "core::mem::offset_of!(crate::deflate::deflate_state, ${FIELD})")
 endforeach()

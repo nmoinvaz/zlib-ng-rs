@@ -50,6 +50,13 @@ unsafe extern "C" {
 
 #[cfg(not(feature = "runtime-cpu-detection"))]
 unsafe extern "C" {
+    fn functable_slide_hash(s: *mut deflate_state);
+    fn functable_slide_hash_head(s: *mut deflate_state);
+    // The native functions that FUNCTABLE_FPTR names, as pointers.
+    safe static functable_longest_match_slow_knuth:
+        unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32;
+    safe static functable_longest_match_slow_roll:
+        unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32;
     fn functable_adler32(adler: u32, buf: *const u8, len: usize) -> u32;
     fn functable_adler32_copy(adler: u32, dst: *mut u8, src: *const u8, len: usize) -> u32;
     fn functable_compare256(src0: *const u8, src1: *const u8) -> u32;
@@ -111,3 +118,48 @@ functable_call!(
     /// `s` must point to a deflate_state that upholds the IN assertions of longest_match.
     longest_match, functable_longest_match, (s: *mut deflate_state, cur_match: u32) -> u32
 );
+functable_call!(
+    /// # Safety
+    ///
+    /// `s` must point to a deflate_state with valid head and prev tables.
+    slide_hash, functable_slide_hash, (s: *mut deflate_state) -> ()
+);
+functable_call!(
+    /// # Safety
+    ///
+    /// `s` must point to a deflate_state with a valid head table.
+    slide_hash_head, functable_slide_hash_head, (s: *mut deflate_state) -> ()
+);
+
+/// Initializes the function table, FUNCTABLE_INIT in C. Returns whether that failed, which
+/// cannot happen without runtime CPU detection because there is no table then.
+#[inline(always)]
+pub(crate) fn force_init_failed() -> bool {
+    // SAFETY: the entry always holds a function, and reading it matches what the C sources do.
+    #[cfg(feature = "runtime-cpu-detection")]
+    return unsafe { ((&raw const functable.force_init).read())() != 0 };
+    #[cfg(not(feature = "runtime-cpu-detection"))]
+    return false;
+}
+
+/// The function that FUNCTABLE_FPTR(longest_match_slow_knuth) names in C
+#[inline(always)]
+pub(crate) fn longest_match_slow_knuth_fptr()
+-> unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32 {
+    // SAFETY: the entry always holds a function, and reading it matches what the C sources do.
+    #[cfg(feature = "runtime-cpu-detection")]
+    return unsafe { (&raw const functable.longest_match_slow_knuth).read() };
+    #[cfg(not(feature = "runtime-cpu-detection"))]
+    return functable_longest_match_slow_knuth;
+}
+
+/// The function that FUNCTABLE_FPTR(longest_match_slow_roll) names in C
+#[inline(always)]
+pub(crate) fn longest_match_slow_roll_fptr()
+-> unsafe extern "C" fn(s: *mut deflate_state, cur_match: u32) -> u32 {
+    // SAFETY: the entry always holds a function, and reading it matches what the C sources do.
+    #[cfg(feature = "runtime-cpu-detection")]
+    return unsafe { (&raw const functable.longest_match_slow_roll).read() };
+    #[cfg(not(feature = "runtime-cpu-detection"))]
+    return functable_longest_match_slow_roll;
+}

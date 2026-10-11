@@ -625,4 +625,15 @@ Z_INTERNAL uint32_t functable_crc32_copy(uint32_t crc, uint8_t *dst, const uint8
 Z_INTERNAL uint32_t functable_longest_match(deflate_state *const s, uint32_t cur_match) {
     return FUNCTABLE_CALL(longest_match)(s, cur_match);
 }
+
+Z_INTERNAL void functable_slide_hash(deflate_state *s) {
+    FUNCTABLE_CALL(slide_hash)(s);
+}
+
+Z_INTERNAL void functable_slide_hash_head(deflate_state *s) {
+    FUNCTABLE_CALL(slide_hash_head)(s);
+}
+
+Z_INTERNAL const longest_match_func functable_longest_match_slow_knuth = FUNCTABLE_FPTR(longest_match_slow_knuth);
+Z_INTERNAL const longest_match_func functable_longest_match_slow_roll = FUNCTABLE_FPTR(longest_match_slow_roll);
 #endif
